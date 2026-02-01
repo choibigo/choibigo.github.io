@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Daewon Choi</title>
+    
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon fill='%2399c2ff' points='50,15 61,45 95,45 67,65 78,95 50,75 22,95 33,65 5,45 39,45'/%3E%3C/svg%3E">
+    
     <style>
         /* --- 1. 기본 설정 --- */
         body {
@@ -14,13 +16,13 @@
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             color: white;
             overflow-x: hidden;
-            cursor: none; /* 기본 마우스 커서 숨김 (커스텀 커서 사용) */
+            cursor: none; /* 기본 마우스 커서 숨김 */
         }
 
-        /* 링크에 마우스를 올렸을 때도 커서 숨김 유지 */
-        a, button {
-            cursor: none;
-        }
+        /* 스크롤바 숨김 */
+        ::-webkit-scrollbar { width: 0; }
+
+        a, button { cursor: none; }
 
         /* Three.js 캔버스 */
         #canvas-container {
@@ -33,93 +35,58 @@
         }
 
         /* --- 2. 커스텀 마우스 커서 --- */
-        .cursor-dot,
-        .cursor-outline {
+        .cursor-dot, .cursor-outline {
             position: fixed;
-            top: 0;
-            left: 0;
+            top: 0; left: 0;
             transform: translate(-50%, -50%);
             border-radius: 50%;
             z-index: 9999;
-            pointer-events: none; /* 클릭 통과 */
+            pointer-events: none;
         }
-
-        .cursor-dot {
-            width: 8px;
-            height: 8px;
-            background-color: #99c2ff;
-        }
-
+        .cursor-dot { width: 8px; height: 8px; background-color: #99c2ff; }
         .cursor-outline {
-            width: 40px;
-            height: 40px;
+            width: 40px; height: 40px;
             border: 1px solid rgba(153, 194, 255, 0.5);
             transition: width 0.2s, height 0.2s, background-color 0.2s;
         }
-
-        /* 링크 호버 시 커서 효과 */
         body.hovering .cursor-outline {
-            width: 60px;
-            height: 60px;
+            width: 60px; height: 60px;
             background-color: rgba(153, 194, 255, 0.1);
             border-color: transparent;
         }
 
-        /* --- 3. 상단 네비게이션 --- */
+        /* --- 3. 네비게이션 --- */
         nav {
             position: fixed;
-            top: 0;
-            width: 100%;
+            top: 0; width: 100%;
             padding: 20px 40px;
-            display: flex;
-            justify-content: flex-end;
-            gap: 30px;
-            z-index: 100;
-            box-sizing: border-box;
+            display: flex; justify-content: flex-end; gap: 30px;
+            z-index: 100; box-sizing: border-box;
             background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
         }
-
         nav a {
-            color: #ccc;
-            text-decoration: none;
-            font-size: 1.1rem;
-            font-weight: 500;
+            color: #ccc; text-decoration: none;
+            font-size: 1.1rem; font-weight: 500;
             transition: color 0.3s;
         }
-
-        nav a:hover {
-            color: #99c2ff;
-        }
+        nav a:hover { color: #99c2ff; }
 
         /* --- 4. 섹션 레이아웃 --- */
         section {
             min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            position: relative;
-            padding: 20px;
-            box-sizing: border-box;
+            display: flex; justify-content: center; align-items: center;
+            position: relative; padding: 20px; box-sizing: border-box;
         }
 
-        /* 첫 화면 (인트로) */
-        #home {
-            flex-direction: column;
-            text-align: center;
-        }
-
+        #home { flex-direction: column; text-align: center; }
         #home h1 {
-            font-size: 4rem;
-            margin-bottom: 20px;
+            font-size: 4rem; margin-bottom: 20px;
             text-shadow: 0 0 25px rgba(153, 194, 255, 0.4);
         }
-
         #home p {
-            font-size: 1.2rem;
-            color: #e6f0ff;
+            font-size: 1.2rem; color: #e6f0ff;
             background: rgba(0, 0, 0, 0.6);
-            padding: 5px 12px;
-            border-radius: 10px;
+            padding: 5px 12px; border-radius: 10px;
             backdrop-filter: blur(4px);
             border: 1px solid rgba(255,255,255,0.1);
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
@@ -136,92 +103,56 @@
             max-width: 850px;
             width: 100%;
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-            
-            opacity: 0;
-            transform: translateY(50px);
+            opacity: 0; transform: translateY(50px);
             transition: all 1s ease-out;
         }
-
-        .glass-card.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
+        .glass-card.visible { opacity: 1; transform: translateY(0); }
         .glass-card h2 {
-            font-size: 2.5rem;
-            margin-top: 0;
-            color: #99c2ff;
+            font-size: 2.5rem; margin-top: 0; color: #99c2ff;
             border-bottom: 1px solid rgba(153, 194, 255, 0.2);
-            padding-bottom: 15px;
-            margin-bottom: 20px;
+            padding-bottom: 15px; margin-bottom: 20px;
         }
-
         .glass-card p {
-            font-size: 1.1rem;
-            line-height: 1.7;
-            color: #d1d5db;
+            font-size: 1.1rem; line-height: 1.7; color: #d1d5db;
         }
 
-        .interest-list {
-            list-style: none;
-            padding: 0;
-        }
+        /* 리스트 스타일 */
+        .interest-list { list-style: none; padding: 0; }
         .interest-list li {
-            position: relative;
-            padding-left: 20px;
-            margin-bottom: 10px;
-            font-size: 1.1rem;
-            color: #d1d5db;
+            position: relative; padding-left: 20px;
+            margin-bottom: 10px; font-size: 1.1rem; color: #d1d5db;
         }
         .interest-list li::before {
-            content: "•";
-            position: absolute;
-            left: 0;
-            color: #99c2ff;
-            font-weight: bold;
+            content: "•"; position: absolute; left: 0;
+            color: #99c2ff; font-weight: bold;
         }
 
         .pub-item {
-            margin-bottom: 25px;
-            padding-bottom: 25px;
+            margin-bottom: 25px; padding-bottom: 25px;
             border-bottom: 1px dashed rgba(255,255,255,0.1);
         }
         .pub-item:last-child { border-bottom: none; }
         .pub-title { font-size: 1.2rem; font-weight: bold; color: #f0f0f0; }
         .pub-meta { font-size: 0.95rem; color: #a0a0a0; margin-top: 6px; }
 
-        /* Publication 링크 Affordance 스타일 */
+        /* Publication 링크 Affordance */
         .pub-link {
-            color: #99c2ff;            /* 포인트 컬러 */
-            text-decoration: none;     /* 기본 밑줄 제거 */
-            border-bottom: 1px solid rgba(153, 194, 255, 0.3); /* 아주 옅은 밑줄 */
+            color: #99c2ff; text-decoration: none;
+            border-bottom: 1px solid rgba(153, 194, 255, 0.3);
             transition: all 0.3s ease;
-            display: inline-block;     /* 애니메이션을 위해 필요 */
-            position: relative;
+            display: inline-block; position: relative;
         }
-
-        /* 마우스를 올렸을 때 효과 */
         .pub-link:hover {
-            color: #ffffff;            /* 글자색 강조 */
-            border-bottom-color: #99c2ff; /* 밑줄 선명하게 */
-            text-shadow: 0 0 10px rgba(153, 194, 255, 0.8); /* 네온 효과 */
+            color: #ffffff; border-bottom-color: #99c2ff;
+            text-shadow: 0 0 10px rgba(153, 194, 255, 0.8);
         }
-
-        /* 링크 뒤에 화살표 아이콘 자동 추가 */
         .pub-link::after {
-            content: "↗";              /* 화살표 특수문자 */
-            font-size: 0.85em;
-            margin-left: 6px;
-            opacity: 0.7;
-            display: inline-block;
+            content: "↗"; font-size: 0.85em; margin-left: 6px;
+            opacity: 0.7; display: inline-block;
             transition: transform 0.3s ease;
         }
-
-        /* 마우스 올리면 화살표가 움직임 */
         .pub-link:hover::after {
-            transform: translate(3px, -3px); /* 대각선 위로 이동 */
-            opacity: 1;
-            color: #00ffff;
+            transform: translate(3px, -3px); opacity: 1; color: #00ffff;
         }
 
     </style>
@@ -250,7 +181,7 @@
         <div class="glass-card">
             <h2>About Me</h2>
             <p>
-                Hello! I am currently pursuing a Ph.D. at <strong>Hanyang University</strong>, advised by <a href="https://sites.google.com/view/robots-oh/lab" target="_blank" class="pub-link"><strong>Prof. Yoon-seon Oh</strong></a>  (2023–Present).<br><br>
+                Hello! I am currently pursuing a Ph.D. at <strong>Hanyang University</strong>, advised by <a href="https://sites.google.com/view/robots-oh/lab" target="_blank" class="pub-link"><strong>Prof. Yoon-seon Oh</strong></a> (2023–Present).<br><br>
                 
                 Prior to my doctoral studies, I worked as a Computer Vision Researcher at 
                 <a href="https://www.mirero.co.kr/" target="_blank" class="pub-link">Mirero System</a> 
@@ -332,7 +263,7 @@
                 <br><br>
                 <strong style="color: #e0e0e0; font-size: 1.1rem; margin-right: 10px;">Email:</strong>
                 <a href="mailto:cbigo@hanyang.ac.kr" class="pub-link">
-                    cbigo At hanyang.ac.kr
+                    cbigo@hanyang.ac.kr
                 </a>
             </p>
         </div>
@@ -344,16 +275,24 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
-        // --- 0. 커스텀 마우스 로직 ---
+        // --------------------------------------------------------
+        // [1] 강제 스크롤 리셋 (새로고침 시 맨 위로)
+        // --------------------------------------------------------
+        if (history.scrollRestoration) {
+            history.scrollRestoration = 'manual';
+        }
+        window.scrollTo(0, 0);
+
+
+        // --------------------------------------------------------
+        // [2] 커스텀 마우스
+        // --------------------------------------------------------
         const cursorDot = document.querySelector('.cursor-dot');
         const cursorOutline = document.querySelector('.cursor-outline');
-        
-        let mouseX = 0, mouseY = 0;
-        let outlineX = 0, outlineY = 0;
+        let mouseX = 0, mouseY = 0, outlineX = 0, outlineY = 0;
 
         window.addEventListener('mousemove', (e) => {
-            mouseX = e.clientX;
-            mouseY = e.clientY;
+            mouseX = e.clientX; mouseY = e.clientY;
             cursorDot.style.left = `${mouseX}px`;
             cursorDot.style.top = `${mouseY}px`;
         });
@@ -367,35 +306,32 @@
         }
         animateCursor();
 
-        // 링크 호버 효과 감지
         document.querySelectorAll('a, button, .pub-link').forEach(el => {
             el.addEventListener('mouseenter', () => document.body.classList.add('hovering'));
             el.addEventListener('mouseleave', () => document.body.classList.remove('hovering'));
         });
 
 
-        // --- A. 스크롤 이동 함수 ---
+        // --------------------------------------------------------
+        // [3] 페이지 스크롤 및 옵저버 로직
+        // --------------------------------------------------------
         function scrollToSection(id) {
             const element = document.getElementById(id);
-            if (element) {
-                element.scrollIntoView({ behavior: 'smooth' });
-            }
+            if (element) element.scrollIntoView({ behavior: 'smooth' });
         }
 
-        // --- B. Intersection Observer ---
-        const observerOptions = { threshold: 0.2 };
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('visible');
-                }
+                if (entry.isIntersecting) entry.target.classList.add('visible');
             });
-        }, observerOptions);
+        }, { threshold: 0.2 });
 
         document.querySelectorAll('.glass-card').forEach(card => observer.observe(card));
 
 
-        // --- C. Three.js 배경 (기존 코드 유지) ---
+        // --------------------------------------------------------
+        // [4] Three.js - 인트로 애니메이션
+        // --------------------------------------------------------
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
@@ -405,39 +341,38 @@
 
         camera.position.z = 40;
 
+        // 원형 텍스처
         function createCircleTexture() {
             const canvas = document.createElement('canvas');
-            canvas.width = 32;
-            canvas.height = 32;
-            const context = canvas.getContext('2d');
+            canvas.width = 32; canvas.height = 32;
+            const ctx = canvas.getContext('2d');
             
-            const gradient = context.createRadialGradient(16, 16, 0, 16, 16, 16);
-            gradient.addColorStop(0, 'rgba(255, 255, 255, 1)'); 
-            gradient.addColorStop(0.4, 'rgba(255, 255, 255, 0.5)');
-            gradient.addColorStop(1, 'rgba(255, 255, 255, 0)'); 
+            const grad = ctx.createRadialGradient(16,16,0, 16,16,16);
+            grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+            grad.addColorStop(0.4, 'rgba(255, 255, 255, 0.5)');
+            grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
             
-            context.fillStyle = gradient;
-            context.fillRect(0, 0, 32, 32);
-            
-            const texture = new THREE.CanvasTexture(canvas);
-            return texture;
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 32, 32);
+            return new THREE.CanvasTexture(canvas);
         }
 
         const particleCount = 12000;
         const geometry = new THREE.BufferGeometry();
         
-        const initialPositions = new Float32Array(particleCount * 3);
-        const targetPositions = new Float32Array(particleCount * 3);
-        const currentPositions = new Float32Array(particleCount * 3);
+        const initialPositions = new Float32Array(particleCount * 3); // 구
+        const targetPositions = new Float32Array(particleCount * 3);  // 노이즈
+        const introPositions = new Float32Array(particleCount * 3);   // 인트로
+        const currentPositions = new Float32Array(particleCount * 3); // 현재
 
         for (let i = 0; i < particleCount; i++) {
+            // 1. Sphere (Initial)
             const u = Math.random();
             const v = Math.random();
             const theta = 2 * Math.PI * u;
             const phi = Math.acos(2 * v - 1);
             
             const r = 12 + Math.random() * 0.5;
-            
             const x = r * Math.sin(phi) * Math.cos(theta);
             const y = r * Math.sin(phi) * Math.sin(theta);
             const z = r * Math.cos(phi);
@@ -446,36 +381,56 @@
             initialPositions[i * 3 + 1] = y;
             initialPositions[i * 3 + 2] = z;
 
+            // 2. Noise (Target)
             targetPositions[i * 3] = (Math.random() - 0.5) * 300; 
             targetPositions[i * 3 + 1] = (Math.random() - 0.5) * 300;
             targetPositions[i * 3 + 2] = (Math.random() - 0.5) * 200;
 
-            currentPositions[i * 3] = initialPositions[i * 3];
-            currentPositions[i * 3 + 1] = initialPositions[i * 3 + 1];
-            currentPositions[i * 3 + 2] = initialPositions[i * 3 + 2];
+            // 3. Intro (Far away)
+            introPositions[i * 3] = (Math.random() - 0.5) * 800; 
+            introPositions[i * 3 + 1] = (Math.random() - 0.5) * 800;
+            introPositions[i * 3 + 2] = (Math.random() - 0.5) * 800;
+
+            currentPositions[i * 3] = introPositions[i * 3];
+            currentPositions[i * 3 + 1] = introPositions[i * 3 + 1];
+            currentPositions[i * 3 + 2] = introPositions[i * 3 + 2];
         }
 
         geometry.setAttribute('position', new THREE.BufferAttribute(currentPositions, 3));
 
         const material = new THREE.PointsMaterial({
-            color: 0x99c2ff, 
-            size: 0.4,
+            color: 0x99c2ff, size: 0.4,
             map: createCircleTexture(),
-            transparent: true,
-            opacity: 0.9,
-            depthWrite: false, 
-            blending: THREE.AdditiveBlending
+            transparent: true, opacity: 0.9,
+            depthWrite: false, blending: THREE.AdditiveBlending
         });
 
         const particles = new THREE.Points(geometry, material);
         scene.add(particles);
 
-        function animate() {
+        
+        // --------------------------------------------------------
+        // [5] 애니메이션 루프
+        // --------------------------------------------------------
+        let startTime = null;
+        
+        // [수정된 부분] 2500 -> 1200 (1.2초)로 변경하여 훨씬 빠르게 모이도록 함
+        const introDuration = 1200; 
+
+        function animate(timestamp) {
             requestAnimationFrame(animate);
 
+            if (!startTime) startTime = timestamp;
+            const elapsed = timestamp - startTime;
+
+            // 1. 인트로 진행률
+            let introProgress = Math.min(elapsed / introDuration, 1);
+            const easeIntro = 1 - Math.pow(1 - introProgress, 3); // Cubic Ease Out
+
+            // 2. 스크롤 진행률
             const maxScroll = document.body.scrollHeight - window.innerHeight;
             const scrollRatio = maxScroll > 0 ? window.scrollY / maxScroll : 0;
-            const mixStrength = Math.min(Math.max(scrollRatio, 0), 1);
+            const scrollStrength = Math.min(Math.max(scrollRatio, 0), 1);
 
             const positions = particles.geometry.attributes.position.array;
 
@@ -484,9 +439,17 @@
                 const iy = i * 3 + 1;
                 const iz = i * 3 + 2;
 
-                positions[ix] = initialPositions[ix] + (targetPositions[ix] - initialPositions[ix]) * mixStrength;
-                positions[iy] = initialPositions[iy] + (targetPositions[iy] - initialPositions[iy]) * mixStrength;
-                positions[iz] = initialPositions[iz] + (targetPositions[iz] - initialPositions[iz]) * mixStrength;
+                if (introProgress < 1) {
+                    // Intro -> Initial
+                    positions[ix] = introPositions[ix] + (initialPositions[ix] - introPositions[ix]) * easeIntro;
+                    positions[iy] = introPositions[iy] + (initialPositions[iy] - introPositions[iy]) * easeIntro;
+                    positions[iz] = introPositions[iz] + (initialPositions[iz] - introPositions[iz]) * easeIntro;
+                } else {
+                    // Initial -> Target (Scroll)
+                    positions[ix] = initialPositions[ix] + (targetPositions[ix] - initialPositions[ix]) * scrollStrength;
+                    positions[iy] = initialPositions[iy] + (targetPositions[iy] - initialPositions[iy]) * scrollStrength;
+                    positions[iz] = initialPositions[iz] + (targetPositions[iz] - initialPositions[iz]) * scrollStrength;
+                }
             }
 
             particles.geometry.attributes.position.needsUpdate = true;
