@@ -60,7 +60,8 @@
             position: fixed;
             top: 0; width: 100%;
             padding: 20px 40px;
-            display: flex; justify-content: flex-end; gap: 30px;
+            display: flex; justify-content: flex-end; /* 기본: 우측 정렬 */
+            gap: 30px;
             z-index: 100; box-sizing: border-box;
             background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
         }
@@ -155,6 +156,33 @@
             transform: translate(3px, -3px); opacity: 1; color: #00ffff;
         }
 
+        /* ========================================= */
+        /* [추가됨] 모바일 반응형 처리 (max-width: 768px) */
+        /* ========================================= */
+        @media (max-width: 768px) {
+            nav {
+                justify-content: center; /* 가운데 정렬 */
+                padding: 15px;           /* 패딩 축소 */
+                gap: 15px;               /* 간격 축소 */
+                flex-wrap: wrap;         /* 화면이 너무 좁으면 줄바꿈 허용 */
+            }
+            nav a {
+                font-size: 0.95rem;      /* 글자 크기 약간 축소 */
+            }
+            
+            /* Research Interests -> Research로 변경하는 로직 */
+            .desktop-only {
+                display: none;           /* 모바일에서는 'Interests' 숨김 */
+            }
+            
+            #home h1 {
+                font-size: 2.5rem;       /* 모바일에서 이름 크기 조정 */
+            }
+            .glass-card {
+                padding: 25px;           /* 카드 내부 여백 조정 */
+            }
+        }
+
     </style>
 </head>
 <body>
@@ -167,7 +195,7 @@
     <nav>
         <a onclick="scrollToSection('home')">Home</a>
         <a onclick="scrollToSection('about')">About</a>
-        <a onclick="scrollToSection('research')">Research Interests</a>
+        <a onclick="scrollToSection('research')">Research<span class="desktop-only"> Interests</span></a>
         <a onclick="scrollToSection('publication')">Publication</a>
         <a onclick="scrollToSection('contact')">Contact</a>
     </nav>
@@ -181,7 +209,7 @@
         <div class="glass-card">
             <h2>About Me</h2>
             <p>
-                Hello! I am currently pursuing a Ph.D. at <strong>Hanyang University</strong>, advised by <a href="https://sites.google.com/view/robots-oh/lab" target="_blank" class="pub-link"><strong>Prof. Oh</strong></a> (2023–Present).<br><br>
+                Hello! I am currently pursuing a Ph.D. at <strong>Hanyang University</strong>, advised by <a href="https://sites.google.com/view/robots-oh/lab" target="_blank" class="pub-link"><strong>Prof. Yoon-seon Oh</strong></a> (2023–Present).<br><br>
                 
                 Prior to my doctoral studies, I worked as a Computer Vision Researcher at 
                 <a href="https://www.mirero.co.kr/" target="_blank" class="pub-link">Mirero System</a> 
@@ -263,7 +291,7 @@
                 <br><br>
                 <strong style="color: #e0e0e0; font-size: 1.1rem; margin-right: 10px;">Email:</strong>
                 <a href="mailto:cbigo@hanyang.ac.kr" class="pub-link">
-                    cbigo At hanyang.ac.kr
+                    cbigo@hanyang.ac.kr
                 </a>
             </p>
         </div>
@@ -360,10 +388,10 @@
         const particleCount = 12000;
         const geometry = new THREE.BufferGeometry();
         
-        const initialPositions = new Float32Array(particleCount * 3); // 구
-        const targetPositions = new Float32Array(particleCount * 3);  // 노이즈
-        const introPositions = new Float32Array(particleCount * 3);   // 인트로
-        const currentPositions = new Float32Array(particleCount * 3); // 현재
+        const initialPositions = new Float32Array(particleCount * 3);
+        const targetPositions = new Float32Array(particleCount * 3);
+        const introPositions = new Float32Array(particleCount * 3);
+        const currentPositions = new Float32Array(particleCount * 3);
 
         for (let i = 0; i < particleCount; i++) {
             // 1. Sphere (Initial)
@@ -414,7 +442,7 @@
         // --------------------------------------------------------
         let startTime = null;
         
-        // [수정된 부분] 2500 -> 1200 (1.2초)로 변경하여 훨씬 빠르게 모이도록 함
+        // 인트로 속도: 1.2초 (빠르게 모임)
         const introDuration = 1200; 
 
         function animate(timestamp) {
@@ -425,7 +453,7 @@
 
             // 1. 인트로 진행률
             let introProgress = Math.min(elapsed / introDuration, 1);
-            const easeIntro = 1 - Math.pow(1 - introProgress, 3); // Cubic Ease Out
+            const easeIntro = 1 - Math.pow(1 - introProgress, 3);
 
             // 2. 스크롤 진행률
             const maxScroll = document.body.scrollHeight - window.innerHeight;
@@ -440,12 +468,10 @@
                 const iz = i * 3 + 2;
 
                 if (introProgress < 1) {
-                    // Intro -> Initial
                     positions[ix] = introPositions[ix] + (initialPositions[ix] - introPositions[ix]) * easeIntro;
                     positions[iy] = introPositions[iy] + (initialPositions[iy] - introPositions[iy]) * easeIntro;
                     positions[iz] = introPositions[iz] + (initialPositions[iz] - introPositions[iz]) * easeIntro;
                 } else {
-                    // Initial -> Target (Scroll)
                     positions[ix] = initialPositions[ix] + (targetPositions[ix] - initialPositions[ix]) * scrollStrength;
                     positions[iy] = initialPositions[iy] + (targetPositions[iy] - initialPositions[iy]) * scrollStrength;
                     positions[iz] = initialPositions[iz] + (targetPositions[iz] - initialPositions[iz]) * scrollStrength;
