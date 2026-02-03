@@ -6,32 +6,27 @@
     <title>Daewon Choi</title>
     
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon fill='%2399c2ff' points='50,15 61,45 95,45 67,65 78,95 50,75 22,95 33,65 5,45 39,45'/%3E%3C/svg%3E">
-    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
     <style>
         /* --- 1. 기본 설정 --- */
         body {
-            margin: 0;
-            padding: 0;
+            margin: 0; padding: 0;
             background-color: #08080a;
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            color: white;
-            overflow-x: hidden;
-            cursor: none; /* 기본 마우스 커서 숨김 */
+            color: white; overflow-x: hidden;
+            cursor: none;
         }
 
-        /* 스크롤바 숨김 */
         ::-webkit-scrollbar { width: 0; }
-
         a, button { cursor: none; }
 
-        /* Three.js 캔버스 */
         #canvas-container {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
             z-index: -1;
+            user-select: none;
         }
 
         /* --- 2. 커스텀 마우스 커서 --- */
@@ -43,17 +38,15 @@
             z-index: 9999;
             pointer-events: none;
         }
-        .cursor-dot { width: 8px; height: 8px; background-color: #99c2ff; }
+        .cursor-dot { width: 8px; height: 8px; background-color: #99c2ff; transition: transform 0.2s; }
         .cursor-outline {
             width: 40px; height: 40px;
             border: 1px solid rgba(153, 194, 255, 0.5);
-            transition: width 0.2s, height 0.2s, background-color 0.2s;
+            transition: width 0.2s, height 0.2s, background-color 0.2s, border-color 0.2s;
         }
-        body.hovering .cursor-outline {
-            width: 60px; height: 60px;
-            background-color: rgba(153, 194, 255, 0.1);
-            border-color: transparent;
-        }
+        body.hovering .cursor-outline { width: 60px; height: 60px; background-color: rgba(153, 194, 255, 0.1); border-color: transparent; }
+        body.clicking .cursor-outline { width: 30px; height: 30px; background-color: rgba(153, 194, 255, 0.4); border-color: #99c2ff; }
+        body.clicking .cursor-dot { transform: translate(-50%, -50%) scale(0.5); }
 
         /* --- 3. 네비게이션 --- */
         nav {
@@ -64,11 +57,7 @@
             z-index: 100; box-sizing: border-box;
             background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
         }
-        nav a {
-            color: #ccc; text-decoration: none;
-            font-size: 1.1rem; font-weight: 500;
-            transition: color 0.3s;
-        }
+        nav a { color: #ccc; text-decoration: none; font-size: 1.1rem; font-weight: 500; transition: color 0.3s; }
         nav a:hover { color: #99c2ff; }
 
         /* --- 4. 섹션 레이아웃 --- */
@@ -79,110 +68,60 @@
         }
 
         #home { flex-direction: column; text-align: center; }
-        
-        /* [수정됨] 이름 스타일 업그레이드 */
         #home h1 {
-            font-size: 5rem;         /* 크기 키움 (4rem -> 5rem) */
-            font-weight: 800;        /* 두께감 추가 */
-            margin-bottom: 20px;
-            letter-spacing: -2px;    /* 자간을 좁혀서 더 단단한 느낌 */
-            
-            /* 그라데이션 텍스트 적용 */
+            font-size: 5rem; font-weight: 800; margin-bottom: 20px; letter-spacing: -2px;
             background: linear-gradient(135deg, #ffffff 20%, #99c2ff 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            
-            /* 가독성을 위한 글로우(Glow) 효과 그림자 */
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
             filter: drop-shadow(0 0 25px rgba(153, 194, 255, 0.5));
         }
 
-        #home p {
-            font-size: 1.2rem; color: #e6f0ff;
-            background: rgba(0, 0, 0, 0.6);
-            padding: 5px 12px; border-radius: 10px;
-            backdrop-filter: blur(4px);
-            border: 1px solid rgba(255,255,255,0.1);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        /* [수정] 안내 문구 스타일 - 애니메이션 추가 */
+        #scroll-hint {
+            font-size: 1.2rem; color: #e6f0ff; background: rgba(0, 0, 0, 0.6);
+            padding: 8px 16px; border-radius: 10px; backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+            opacity: 1;
         }
 
         /* --- 5. 글래스모피즘 카드 --- */
         .glass-card {
             background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 20px;
-            padding: 40px;
-            max-width: 850px;
-            width: 100%;
+            border-radius: 20px; padding: 40px;
+            max-width: 850px; width: 100%;
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
             opacity: 0; transform: translateY(50px);
             transition: all 1s ease-out;
+            pointer-events: auto;
         }
         .glass-card.visible { opacity: 1; transform: translateY(0); }
         .glass-card h2 {
             font-size: 2.5rem; margin-top: 0; color: #99c2ff;
             border-bottom: 1px solid rgba(153, 194, 255, 0.2);
             padding-bottom: 15px; margin-bottom: 20px;
-        }
-        .glass-card p {
-            font-size: 1.1rem; line-height: 1.7; color: #d1d5db;
+            display: flex; justify-content: space-between; align-items: center;
         }
 
-        /* 리스트 스타일 */
+        .github-link { font-size: 1.8rem; color: rgba(153, 194, 255, 0.7); transition: all 0.3s ease; text-decoration: none; }
+        .github-link:hover { color: #ffffff; transform: scale(1.1); filter: drop-shadow(0 0 10px rgba(153, 194, 255, 0.8)); }
+
+        .glass-card p { font-size: 1.1rem; line-height: 1.7; color: #d1d5db; }
+        .pub-link { color: #99c2ff; text-decoration: none; border-bottom: 1px solid rgba(153, 194, 255, 0.3); transition: all 0.3s ease; display: inline-block; }
+        .pub-link:hover { color: #ffffff; border-bottom-color: #99c2ff; }
+
         .interest-list { list-style: none; padding: 0; }
-        .interest-list li {
-            position: relative; padding-left: 20px;
-            margin-bottom: 10px; font-size: 1.1rem; color: #d1d5db;
-        }
-        .interest-list li::before {
-            content: "•"; position: absolute; left: 0;
-            color: #99c2ff; font-weight: bold;
-        }
+        .interest-list li { position: relative; padding-left: 20px; margin-bottom: 10px; color: #d1d5db; }
+        .interest-list li::before { content: "•"; position: absolute; left: 0; color: #99c2ff; }
 
-        .pub-item {
-            margin-bottom: 25px; padding-bottom: 25px;
-            border-bottom: 1px dashed rgba(255,255,255,0.1);
-        }
+        .pub-item { margin-bottom: 25px; padding-bottom: 25px; border-bottom: 1px dashed rgba(255,255,255,0.1); }
         .pub-item:last-child { border-bottom: none; }
-        .pub-title { font-size: 1.2rem; font-weight: bold; color: #f0f0f0; }
-        .pub-meta { font-size: 0.95rem; color: #a0a0a0; margin-top: 6px; }
 
-        /* Publication 링크 Affordance */
-        .pub-link {
-            color: #99c2ff; text-decoration: none;
-            border-bottom: 1px solid rgba(153, 194, 255, 0.3);
-            transition: all 0.3s ease;
-            display: inline-block; position: relative;
-        }
-        .pub-link:hover {
-            color: #ffffff; border-bottom-color: #99c2ff;
-            text-shadow: 0 0 10px rgba(153, 194, 255, 0.8);
-        }
-        .pub-link::after {
-            content: "↗"; font-size: 0.85em; margin-left: 6px;
-            opacity: 0.7; display: inline-block;
-            transition: transform 0.3s ease;
-        }
-        .pub-link:hover::after {
-            transform: translate(3px, -3px); opacity: 1; color: #00ffff;
-        }
-
-        /* --- 모바일 반응형 --- */
         @media (max-width: 768px) {
-            nav {
-                justify-content: center;
-                padding: 15px; gap: 15px; flex-wrap: wrap;
-            }
-            nav a { font-size: 0.95rem; }
-            .desktop-only { display: none; }
-            
-            #home h1 {
-                font-size: 3rem; /* 모바일에서는 조금 작게 조정 */
-            }
-            .glass-card { padding: 25px; }
+            #home h1 { font-size: 3rem; }
+            nav { justify-content: center; padding: 15px; gap: 15px; }
         }
-
     </style>
 </head>
 <body>
@@ -195,30 +134,31 @@
     <nav>
         <a onclick="scrollToSection('home')">Home</a>
         <a onclick="scrollToSection('about')">About</a>
-        <a onclick="scrollToSection('research')">Research<span class="desktop-only"> Interests</span></a>
+        <a onclick="scrollToSection('research')">Research</a>
         <a onclick="scrollToSection('publication')">Publication</a>
         <a onclick="scrollToSection('contact')">Contact</a>
     </nav>
 
     <section id="home">
         <h1>Daewon Choi</h1>
-        <p>Scroll down to know more about me</p>
+        <p id="scroll-hint">Scroll down to know more about me</p>
     </section>
 
     <section id="about">
         <div class="glass-card">
-            <h2>About Me</h2>
+            <h2>
+                About Me
+                <a href="https://github.com/choibigo" target="_blank" class="github-link">
+                    <i class="fa-brands fa-github"></i>
+                </a>
+            </h2>
             <p>
                 Hello!<br>
                 I am currently pursuing a Ph.D. at <strong>Hanyang University</strong>, advised by <a href="https://sites.google.com/view/robots-oh/lab" target="_blank" class="pub-link"><strong>Prof. Yoon-seon Oh</strong></a> (2023-Present).<br>
-                
                 Prior to my doctoral studies, I worked as a Computer Vision Researcher at 
-                <a href="https://www.mirero.co.kr/" target="_blank" class="pub-link">Mirero System</a> 
-                (2020-2023).<br>
-                
+                <a href="https://www.mirero.co.kr/" target="_blank" class="pub-link">Mirero System</a> (2020-2023).<br>
                 I received my B.S. in Computer Science and Engineering from 
-                <a href="https://csai.jbnu.ac.kr/csai/index.do" target="_blank" class="pub-link">Jeonbuk National University</a> 
-                (2015-2020).
+                <a href="https://csai.jbnu.ac.kr/csai/index.do" target="_blank" class="pub-link">Jeonbuk National University</a> (2015-2020).
             </p>
         </div>
     </section>
@@ -226,25 +166,11 @@
     <section id="research">
         <div class="glass-card">
             <h2>Research Interests</h2>
-            <p>
-                My research interests lie at the intersection of <strong>Robotics</strong> and <strong>Computer Vision</strong>. 
-                I am particularly focused on <strong>human-friendly robot intelligence</strong>, 
-                with the ultimate goal of bridging the gap for robots to be seamlessly integrated into our domestic environments.
-            </p>
-            <br>
+            <p>My research interests lie at the intersection of <strong>Robotics</strong> and <strong>Computer Vision</strong>.</p>
             <ul class="interest-list">
-                <li>
-                    <strong>Scene Understanding:</strong> 
-                    Enabling robots to semantically interpret their surroundings and understand the context of the environment they are placed in.
-                </li>
-                <li>
-                    <strong>Bimanual Manipulation:</strong> 
-                    Researching precise control strategies for dual-arm systems to physically execute complex tasks required by human instructions.
-                </li>
-                <li>
-                    <strong>Task Planning:</strong> 
-                    Developing algorithms that decompose high-level human instructions into executable sequences of robotic actions.
-                </li>
+                <li><strong>Scene Understanding:</strong> Semantic interpretation of surroundings.</li>
+                <li><strong>Bimanual Manipulation:</strong> Control strategies for dual-arm systems.</li>
+                <li><strong>Task Planning:</strong> Decomposing high-level human instructions.</li>
             </ul>
         </div>
     </section>
@@ -252,35 +178,14 @@
     <section id="publication">
         <div class="glass-card">
             <h2>Publications</h2>
-            
             <div class="pub-item">
-                <div class="pub-title">
-                    <a href="https://robots-oh.github.io/TASMap/" target="_blank" class="pub-link">
-                        Task-Aware Semantic Map: Autonomous Robot Task Assignment Beyond Commands
-                    </a>
-                </div>
+                <div class="pub-title"><a href="https://robots-oh.github.io/TASMap/" target="_blank" class="pub-link">Task-Aware Semantic Map: Autonomous Robot Task Assignment Beyond Commands</a></div>
                 <div class="pub-meta">ICRA 2025</div>
             </div>
-
             <div class="pub-item">
-                <div class="pub-title">
-                    <a href="https://robots-oh.github.io/tasmap_pp/" target="_blank" class="pub-link">
-                        Task-Aware Semantic Map++: Cost-Efficient Task Assignment with Advanced Benchmark
-                    </a>
-                </div>
+                <div class="pub-title"><a href="https://robots-oh.github.io/tasmap_pp/" target="_blank" class="pub-link">Task-Aware Semantic Map++: Cost-Efficient Task Assignment with Advanced Benchmark</a></div>
                 <div class="pub-meta">RA-Letters</div>
             </div>
-
-            <div class="pub-item">
-                <div class="pub-title">LITE-Planner: LLM-Reflective and Instinctive Task Execution via Personalized PageRank for Housekeeping Robot</div>
-                <div class="pub-meta">Work in Progress</div>
-            </div>
-
-            <div class="pub-item">
-                <div class="pub-title">DOLBi: Demonstration-based Object-centric Learning for Bimanual Manipulation</div>
-                <div class="pub-meta">Work in Progress</div>
-            </div>
-
         </div>
     </section>
 
@@ -288,209 +193,166 @@
         <div class="glass-card">
             <h2>Contact</h2>
             <p>
-                If you are interested in my research or have any questions, please feel free to contact me.
-                <br><br>
-                <strong style="color: #e0e0e0; font-size: 1.1rem; margin-right: 10px;">Email:</strong>
-                <a href="mailto:cbigo@hanyang.ac.kr" class="pub-link">
-                    cbigo@hanyang.ac.kr
-                </a>
+                <strong style="color: #e0e0e0;">Email:</strong>
+                <a href="mailto:cbigo@hanyang.ac.kr" class="pub-link">cbigo@hanyang.ac.kr</a>
             </p>
         </div>
     </section>
 
     <div style="height: 30vh;"></div>
 
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
-        // --------------------------------------------------------
-        // [1] 강제 스크롤 리셋 (새로고침 시 맨 위로)
-        // --------------------------------------------------------
-        if (history.scrollRestoration) {
-            history.scrollRestoration = 'manual';
-        }
+        // [1] 스크롤 리셋
+        if (history.scrollRestoration) history.scrollRestoration = 'manual';
         window.scrollTo(0, 0);
 
-
-        // --------------------------------------------------------
-        // [2] 커스텀 마우스
-        // --------------------------------------------------------
+        // [2] 커스텀 마우스 & 안내 문구 처리
         const cursorDot = document.querySelector('.cursor-dot');
         const cursorOutline = document.querySelector('.cursor-outline');
+        const scrollHint = document.getElementById('scroll-hint'); // 추가
+
         let mouseX = 0, mouseY = 0, outlineX = 0, outlineY = 0;
+        let isMouseDown = false;
+        let isBackgroundDrag = false;
+
+        let targetRotationX = 0, targetRotationY = 0;
+        let currentRotationX = 0, currentRotationY = 0;
+
+        // [스크롤 힌트 제어 로직]
+        window.addEventListener('scroll', () => {
+            const scrollY = window.scrollY;
+            if (scrollY > 50) {
+                // 스크롤을 내리면 투명해지고 살짝 위로 밀림
+                scrollHint.style.opacity = '0';
+                scrollHint.style.transform = 'translateY(-20px)';
+                scrollHint.style.pointerEvents = 'none'; // 클릭 방지
+            } else {
+                // 맨 위면 다시 나타남
+                scrollHint.style.opacity = '1';
+                scrollHint.style.transform = 'translateY(0)';
+                scrollHint.style.pointerEvents = 'auto';
+            }
+        });
 
         window.addEventListener('mousemove', (e) => {
             mouseX = e.clientX; mouseY = e.clientY;
             cursorDot.style.left = `${mouseX}px`;
             cursorDot.style.top = `${mouseY}px`;
+            if (isBackgroundDrag) {
+                targetRotationX += e.movementX * 0.002;
+                targetRotationY += e.movementY * 0.002;
+            }
         });
 
-        function animateCursor() {
-            outlineX += (mouseX - outlineX) * 0.15;
-            outlineY += (mouseY - outlineY) * 0.15;
-            cursorOutline.style.left = `${outlineX}px`;
-            cursorOutline.style.top = `${outlineY}px`;
-            requestAnimationFrame(animateCursor);
-        }
-        animateCursor();
+        window.addEventListener('mousedown', (e) => {
+            const isInsideCard = e.target.closest('.glass-card');
+            const isInteractive = e.target.closest('a') || e.target.closest('button');
+            if (!isInsideCard && !isInteractive) isBackgroundDrag = true;
+            isMouseDown = true;
+            document.body.classList.add('clicking');
+        });
 
-        document.querySelectorAll('a, button, .pub-link').forEach(el => {
+        window.addEventListener('mouseup', () => {
+            isMouseDown = false;
+            isBackgroundDrag = false;
+            document.body.classList.remove('clicking');
+        });
+
+        document.querySelectorAll('a, button, .glass-card').forEach(el => {
             el.addEventListener('mouseenter', () => document.body.classList.add('hovering'));
             el.addEventListener('mouseleave', () => document.body.classList.remove('hovering'));
         });
 
-
-        // --------------------------------------------------------
-        // [3] 페이지 스크롤 및 옵저버 로직
-        // --------------------------------------------------------
+        // [3] 페이지 제어
         function scrollToSection(id) {
-            const element = document.getElementById(id);
-            if (element) element.scrollIntoView({ behavior: 'smooth' });
+            document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
         }
-
         const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) entry.target.classList.add('visible');
-            });
+            entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('visible'); });
         }, { threshold: 0.2 });
-
         document.querySelectorAll('.glass-card').forEach(card => observer.observe(card));
 
-
-        // --------------------------------------------------------
-        // [4] Three.js - 인트로 애니메이션
-        // --------------------------------------------------------
+        // [4] Three.js 배경 설정
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-        
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.getElementById('canvas-container').appendChild(renderer.domElement);
-
         camera.position.z = 40;
 
-        // 원형 텍스처
         function createCircleTexture() {
-            const canvas = document.createElement('canvas');
-            canvas.width = 32; canvas.height = 32;
+            const canvas = document.createElement('canvas'); canvas.width = 32; canvas.height = 32;
             const ctx = canvas.getContext('2d');
-            
             const grad = ctx.createRadialGradient(16,16,0, 16,16,16);
-            grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
-            grad.addColorStop(0.4, 'rgba(255, 255, 255, 0.5)');
-            grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
-            
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, 32, 32);
+            grad.addColorStop(0, 'white'); grad.addColorStop(1, 'transparent');
+            ctx.fillStyle = grad; ctx.fillRect(0, 0, 32, 32);
             return new THREE.CanvasTexture(canvas);
         }
 
         const particleCount = 12000;
         const geometry = new THREE.BufferGeometry();
-        
         const initialPositions = new Float32Array(particleCount * 3);
         const targetPositions = new Float32Array(particleCount * 3);
         const introPositions = new Float32Array(particleCount * 3);
         const currentPositions = new Float32Array(particleCount * 3);
 
         for (let i = 0; i < particleCount; i++) {
-            // 1. Sphere (Initial)
-            const u = Math.random();
-            const v = Math.random();
-            const theta = 2 * Math.PI * u;
-            const phi = Math.acos(2 * v - 1);
-            
+            const u = Math.random(), v = Math.random();
+            const theta = 2 * Math.PI * u, phi = Math.acos(2 * v - 1);
             const r = 12 + Math.random() * 0.5;
-            const x = r * Math.sin(phi) * Math.cos(theta);
-            const y = r * Math.sin(phi) * Math.sin(theta);
-            const z = r * Math.cos(phi);
-
-            initialPositions[i * 3] = x;
-            initialPositions[i * 3 + 1] = y;
-            initialPositions[i * 3 + 2] = z;
-
-            // 2. Noise (Target)
-            targetPositions[i * 3] = (Math.random() - 0.5) * 300; 
-            targetPositions[i * 3 + 1] = (Math.random() - 0.5) * 300;
-            targetPositions[i * 3 + 2] = (Math.random() - 0.5) * 200;
-
-            // 3. Intro (Far away)
-            introPositions[i * 3] = (Math.random() - 0.5) * 800; 
-            introPositions[i * 3 + 1] = (Math.random() - 0.5) * 800;
-            introPositions[i * 3 + 2] = (Math.random() - 0.5) * 800;
-
-            currentPositions[i * 3] = introPositions[i * 3];
-            currentPositions[i * 3 + 1] = introPositions[i * 3 + 1];
-            currentPositions[i * 3 + 2] = introPositions[i * 3 + 2];
+            initialPositions[i*3] = r * Math.sin(phi) * Math.cos(theta);
+            initialPositions[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
+            initialPositions[i*3+2] = r * Math.cos(phi);
+            targetPositions[i*3] = (Math.random()-0.5)*300; 
+            targetPositions[i*3+1] = (Math.random()-0.5)*300;
+            targetPositions[i*3+2] = (Math.random()-0.5)*200;
+            introPositions[i*3] = (Math.random()-0.5)*800; 
+            introPositions[i*3+1] = (Math.random()-0.5)*800;
+            introPositions[i*3+2] = (Math.random()-0.5)*800;
         }
 
         geometry.setAttribute('position', new THREE.BufferAttribute(currentPositions, 3));
-
-        const material = new THREE.PointsMaterial({
-            color: 0x99c2ff, size: 0.4,
-            map: createCircleTexture(),
-            transparent: true, opacity: 0.9,
-            depthWrite: false, blending: THREE.AdditiveBlending
-        });
-
-        const particles = new THREE.Points(geometry, material);
+        const particles = new THREE.Points(geometry, new THREE.PointsMaterial({
+            color: 0x99c2ff, size: 0.4, map: createCircleTexture(), transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false
+        }));
         scene.add(particles);
 
-        
-        // --------------------------------------------------------
-        // [5] 애니메이션 루프
-        // --------------------------------------------------------
         let startTime = null;
-        const introDuration = 1200; // 1.2초 (빠르게)
-
         function animate(timestamp) {
             requestAnimationFrame(animate);
-
             if (!startTime) startTime = timestamp;
             const elapsed = timestamp - startTime;
-
-            // 1. 인트로 진행률
-            let introProgress = Math.min(elapsed / introDuration, 1);
-            const easeIntro = 1 - Math.pow(1 - introProgress, 3);
-
-            // 2. 스크롤 진행률
-            const maxScroll = document.body.scrollHeight - window.innerHeight;
-            const scrollRatio = maxScroll > 0 ? window.scrollY / maxScroll : 0;
-            const scrollStrength = Math.min(Math.max(scrollRatio, 0), 1);
-
-            const positions = particles.geometry.attributes.position.array;
-
+            let introProgress = Math.min(elapsed / 1200, 1);
+            const scrollStrength = Math.min(Math.max(window.scrollY / (document.body.scrollHeight - window.innerHeight), 0), 1);
+            const pos = particles.geometry.attributes.position.array;
             for (let i = 0; i < particleCount; i++) {
-                const ix = i * 3;
-                const iy = i * 3 + 1;
-                const iz = i * 3 + 2;
-
+                const ix = i*3, iy = i*3+1, iz = i*3+2;
                 if (introProgress < 1) {
-                    positions[ix] = introPositions[ix] + (initialPositions[ix] - introPositions[ix]) * easeIntro;
-                    positions[iy] = introPositions[iy] + (initialPositions[iy] - introPositions[iy]) * easeIntro;
-                    positions[iz] = introPositions[iz] + (initialPositions[iz] - introPositions[iz]) * easeIntro;
+                    pos[ix] = introPositions[ix] + (initialPositions[ix]-introPositions[ix])*(1-Math.pow(1-introProgress,3));
+                    pos[iy] = introPositions[iy] + (initialPositions[iy]-introPositions[iy])*(1-Math.pow(1-introProgress,3));
+                    pos[iz] = introPositions[iz] + (initialPositions[iz]-introPositions[iz])*(1-Math.pow(1-introProgress,3));
                 } else {
-                    positions[ix] = initialPositions[ix] + (targetPositions[ix] - initialPositions[ix]) * scrollStrength;
-                    positions[iy] = initialPositions[iy] + (targetPositions[iy] - initialPositions[iy]) * scrollStrength;
-                    positions[iz] = initialPositions[iz] + (targetPositions[iz] - initialPositions[iz]) * scrollStrength;
+                    pos[ix] = initialPositions[ix] + (targetPositions[ix]-initialPositions[ix])*scrollStrength;
+                    pos[iy] = initialPositions[iy] + (targetPositions[iy]-initialPositions[iy])*scrollStrength;
+                    pos[iz] = initialPositions[iz] + (targetPositions[iz]-initialPositions[iz])*scrollStrength;
                 }
             }
-
             particles.geometry.attributes.position.needsUpdate = true;
-            particles.rotation.y += 0.001; 
-
+            currentRotationX += (targetRotationX - currentRotationX) * 0.05;
+            currentRotationY += (targetRotationY - currentRotationY) * 0.05;
+            particles.rotation.y = currentRotationX + (timestamp * 0.0001);
+            particles.rotation.x = currentRotationY;
+            outlineX += (mouseX - outlineX) * 0.15; outlineY += (mouseY - outlineY) * 0.15;
+            cursorOutline.style.left = `${outlineX}px`; cursorOutline.style.top = `${outlineY}px`;
             renderer.render(scene, camera);
         }
-
         window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
+            camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
-
         animate();
-
     </script>
 </body>
 </html>
