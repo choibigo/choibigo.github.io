@@ -53,11 +53,20 @@
             position: fixed;
             top: 0; width: 100%;
             padding: 20px 40px;
-            display: flex; justify-content: flex-end; gap: 30px;
+            display: flex; justify-content: flex-end; gap: 40px;
             z-index: 100; box-sizing: border-box;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+            background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent);
+            transition: all 0.3s ease;
+            
+            /* [중요 해결책] Nav 바 자체는 클릭을 통과시켜야 아래에 있는 타이틀이 클릭됩니다. */
+            pointer-events: none; 
         }
-        nav a { color: #ccc; text-decoration: none; font-size: 1.1rem; font-weight: 500; transition: color 0.3s; }
+        
+        /* [중요] 링크들은 다시 클릭이 되어야 합니다. */
+        nav a { 
+            color: #ccc; text-decoration: none; font-size: 1.1rem; font-weight: 500; transition: color 0.3s;
+            pointer-events: auto; 
+        }
         nav a:hover { color: #99c2ff; }
 
         /* --- 4. 섹션 레이아웃 --- */
@@ -67,21 +76,57 @@
             position: relative; padding: 20px; box-sizing: border-box;
         }
 
-        #home { flex-direction: column; text-align: center; }
-        #home h1 {
-            font-size: 5rem; font-weight: 800; margin-bottom: 20px; letter-spacing: -2px;
-            background: linear-gradient(135deg, #ffffff 20%, #99c2ff 100%);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            filter: drop-shadow(0 0 25px rgba(153, 194, 255, 0.5));
+        #home { 
+            flex-direction: column; 
+            text-align: center; 
         }
 
-        /* [수정] 안내 문구 스타일 - 애니메이션 추가 */
+        /* 타이틀 스타일 */
+        #home h1 {
+            position: fixed; 
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%); 
+            font-size: 5rem; font-weight: 800; margin: 0; letter-spacing: -2px;
+            
+            background: linear-gradient(160deg, #ffffff 40%, #80b3ff 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            
+            filter: drop-shadow(0 0 30px rgba(153, 194, 255, 0.6));
+            
+            z-index: 90;
+            width: 100%; text-align: center;
+            will-change: top, transform;
+            white-space: nowrap;
+            
+            /* 초기 상태: 클릭 불가 */
+            pointer-events: none; 
+            cursor: default; 
+            
+            transition: opacity 0.3s;
+        }
+        #home h1:hover { opacity: 0.8; }
+
         #scroll-hint {
-            font-size: 1.2rem; color: #e6f0ff; background: rgba(0, 0, 0, 0.6);
-            padding: 8px 16px; border-radius: 10px; backdrop-filter: blur(4px);
-            border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            transition: opacity 0.6s ease, transform 0.6s ease;
+            position: absolute;
+            bottom: 15%; 
+            font-size: 1.1rem; color: #ffffff;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 10px 24px; border-radius: 50px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255,255,255,0.15); 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            display: flex; flex-direction: column; align-items: center; gap: 8px; 
+            animation: bounce 2s infinite ease-in-out;
+            transition: opacity 0.5s ease;
             opacity: 1;
+        }
+        
+        #scroll-hint i { color: #ffffff; font-size: 1.2rem; filter: drop-shadow(0 0 5px rgba(255,255,255,0.5)); }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
         }
 
         /* --- 5. 글래스모피즘 카드 --- */
@@ -95,6 +140,7 @@
             opacity: 0; transform: translateY(50px);
             transition: all 1s ease-out;
             pointer-events: auto;
+            z-index: 10;
         }
         .glass-card.visible { opacity: 1; transform: translateY(0); }
         .glass-card h2 {
@@ -117,10 +163,23 @@
 
         .pub-item { margin-bottom: 25px; padding-bottom: 25px; border-bottom: 1px dashed rgba(255,255,255,0.1); }
         .pub-item:last-child { border-bottom: none; }
+        
+        .pub-title { font-size: 1.2rem; font-weight: bold; margin-bottom: 5px; }
+        .pub-meta { color: #888; font-size: 0.9rem; }
+
+        /* [반응형] */
+        @media (max-width: 1100px) {
+            nav {
+                justify-content: center; 
+                padding: 20px; gap: 20px;
+                background: rgba(0,0,0,0.8);
+            }
+            #home h1 { font-size: 4rem; }
+        }
 
         @media (max-width: 768px) {
+            nav { gap: 15px; }
             #home h1 { font-size: 3rem; }
-            nav { justify-content: center; padding: 15px; gap: 15px; }
         }
     </style>
 </head>
@@ -131,7 +190,7 @@
 
     <div id="canvas-container"></div>
 
-    <nav>
+    <nav id="navbar">
         <a onclick="scrollToSection('home')">Home</a>
         <a onclick="scrollToSection('about')">About</a>
         <a onclick="scrollToSection('research')">Research</a>
@@ -140,8 +199,11 @@
     </nav>
 
     <section id="home">
-        <h1>Daewon Choi</h1>
-        <p id="scroll-hint">Scroll down to know more about me</p>
+        <h1 id="main-title">Daewon Choi</h1>
+        <p id="scroll-hint">
+            <i class="fa-solid fa-angles-down"></i>
+            Scroll down to know more about me
+        </p>
     </section>
 
     <section id="about">
@@ -204,14 +266,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
-        // [1] 스크롤 리셋
         if (history.scrollRestoration) history.scrollRestoration = 'manual';
         window.scrollTo(0, 0);
 
-        // [2] 커스텀 마우스 & 안내 문구 처리
         const cursorDot = document.querySelector('.cursor-dot');
         const cursorOutline = document.querySelector('.cursor-outline');
-        const scrollHint = document.getElementById('scroll-hint'); // 추가
+        const scrollHint = document.getElementById('scroll-hint');
+        const mainTitle = document.getElementById('main-title');
 
         let mouseX = 0, mouseY = 0, outlineX = 0, outlineY = 0;
         let isMouseDown = false;
@@ -220,19 +281,56 @@
         let targetRotationX = 0, targetRotationY = 0;
         let currentRotationX = 0, currentRotationY = 0;
 
-        // [스크롤 힌트 제어 로직]
+        // 클릭 이벤트 등록
+        mainTitle.addEventListener('click', () => {
+            scrollToSection('home');
+        });
+
         window.addEventListener('scroll', () => {
             const scrollY = window.scrollY;
+            const winH = window.innerHeight;
+            const winW = window.innerWidth;
+
+            // 힌트 제어
             if (scrollY > 50) {
-                // 스크롤을 내리면 투명해지고 살짝 위로 밀림
                 scrollHint.style.opacity = '0';
-                scrollHint.style.transform = 'translateY(-20px)';
-                scrollHint.style.pointerEvents = 'none'; // 클릭 방지
+                scrollHint.style.pointerEvents = 'none';
             } else {
-                // 맨 위면 다시 나타남
                 scrollHint.style.opacity = '1';
-                scrollHint.style.transform = 'translateY(0)';
                 scrollHint.style.pointerEvents = 'auto';
+            }
+
+            const startY = winH * 0.5;
+            let stopY, minScale;
+
+            if (winW > 1100) {
+                stopY = 35; 
+                minScale = 0.5;
+            } else {
+                stopY = 90; 
+                minScale = 0.5;
+                if (winW <= 768) stopY = 100;
+            }
+            
+            let currentTop = startY - scrollY;
+            const totalTravel = startY - stopY;
+            
+            let progress = Math.min(Math.max(scrollY / totalTravel, 0), 1);
+            let currentScale = 1 - ((1 - minScale) * progress);
+
+            if (currentTop < stopY) currentTop = stopY;
+
+            mainTitle.style.top = `${currentTop}px`;
+            mainTitle.style.transform = `translate(-50%, -50%) scale(${currentScale})`;
+
+            // [클릭 활성화 로직]
+            // 스크롤이 거의 다 올라갔을 때만 클릭 가능
+            if (progress > 0.9) {
+                mainTitle.style.pointerEvents = 'auto';
+                mainTitle.style.cursor = 'pointer';
+            } else {
+                mainTitle.style.pointerEvents = 'none';
+                mainTitle.style.cursor = 'default';
             }
         });
 
@@ -248,7 +346,7 @@
 
         window.addEventListener('mousedown', (e) => {
             const isInsideCard = e.target.closest('.glass-card');
-            const isInteractive = e.target.closest('a') || e.target.closest('button');
+            const isInteractive = e.target.closest('a') || e.target.closest('button') || e.target.id === 'main-title';
             if (!isInsideCard && !isInteractive) isBackgroundDrag = true;
             isMouseDown = true;
             document.body.classList.add('clicking');
@@ -260,21 +358,24 @@
             document.body.classList.remove('clicking');
         });
 
-        document.querySelectorAll('a, button, .glass-card').forEach(el => {
+        document.querySelectorAll('a, button, .glass-card, #main-title').forEach(el => {
             el.addEventListener('mouseenter', () => document.body.classList.add('hovering'));
             el.addEventListener('mouseleave', () => document.body.classList.remove('hovering'));
         });
 
-        // [3] 페이지 제어
         function scrollToSection(id) {
-            document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+            const el = document.getElementById(id);
+            if(el) {
+                window.scrollTo({top: el.getBoundingClientRect().top + window.pageYOffset, behavior: 'smooth'});
+            }
         }
+        
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('visible'); });
         }, { threshold: 0.2 });
         document.querySelectorAll('.glass-card').forEach(card => observer.observe(card));
 
-        // [4] Three.js 배경 설정
+        // Three.js
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
@@ -293,10 +394,10 @@
 
         const particleCount = 12000;
         const geometry = new THREE.BufferGeometry();
+        const currentPositions = new Float32Array(particleCount * 3);
         const initialPositions = new Float32Array(particleCount * 3);
         const targetPositions = new Float32Array(particleCount * 3);
         const introPositions = new Float32Array(particleCount * 3);
-        const currentPositions = new Float32Array(particleCount * 3);
 
         for (let i = 0; i < particleCount; i++) {
             const u = Math.random(), v = Math.random();
