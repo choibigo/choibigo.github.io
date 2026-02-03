@@ -29,6 +29,22 @@
             user-select: none;
         }
 
+        /* --- [NEW] 3번: 스크롤 진행 바 --- */
+        #progress-container {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 3px;
+            z-index: 10000; /* 최상단 */
+            background: rgba(255, 255, 255, 0.1);
+        }
+        #progress-bar {
+            height: 100%;
+            background: #99c2ff;
+            width: 0%;
+            box-shadow: 0 0 10px #99c2ff;
+            transition: width 0.1s;
+        }
+
         /* --- 2. 커스텀 마우스 커서 --- */
         .cursor-dot, .cursor-outline {
             position: fixed;
@@ -56,13 +72,8 @@
             display: flex; justify-content: flex-end; gap: 40px;
             z-index: 100; box-sizing: border-box;
             background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent);
-            transition: all 0.3s ease;
-            
-            /* [중요 해결책] Nav 바 자체는 클릭을 통과시켜야 아래에 있는 타이틀이 클릭됩니다. */
             pointer-events: none; 
         }
-        
-        /* [중요] 링크들은 다시 클릭이 되어야 합니다. */
         nav a { 
             color: #ccc; text-decoration: none; font-size: 1.1rem; font-weight: 500; transition: color 0.3s;
             pointer-events: auto; 
@@ -87,24 +98,61 @@
             top: 50%; left: 50%;
             transform: translate(-50%, -50%); 
             font-size: 5rem; font-weight: 800; margin: 0; letter-spacing: -2px;
-            
             background: linear-gradient(160deg, #ffffff 40%, #80b3ff 100%);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            
             filter: drop-shadow(0 0 30px rgba(153, 194, 255, 0.6));
-            
             z-index: 90;
             width: 100%; text-align: center;
             will-change: top, transform;
             white-space: nowrap;
-            
-            /* 초기 상태: 클릭 불가 */
             pointer-events: none; 
             cursor: default; 
-            
             transition: opacity 0.3s;
         }
         #home h1:hover { opacity: 0.8; }
+
+        /* --- [NEW] 1번: 타이핑 효과 텍스트 --- */
+        #typing-wrapper {
+            position: fixed;
+            top: 60%; 
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.6rem; /* 크기 약간 키움 */
+            
+            /* [변경 포인트 1] 색상을 흰색으로 변경하여 파란 점들과 대비 */
+            color: #ffffff; 
+            
+            font-weight: 500; /* 폰트 두께 약간 증가 */
+            z-index: 89; 
+            letter-spacing: 1px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            opacity: 1;
+            transition: opacity 0.3s;
+
+            /* [변경 포인트 2] 글자 뒤에 검은 그림자와 배경 흐림 효과 추가 */
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0,0,0,0.5);
+            
+            /* [선택 사항] 가독성을 위해 텍스트 뒤에 살짝 어두운 배경을 깔고 싶다면 아래 주석 해제 */
+            /*
+            background: rgba(0, 0, 0, 0.4);
+            padding: 8px 20px;
+            border-radius: 30px;
+            backdrop-filter: blur(2px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            */
+        }
+        
+        .cursor-blink {
+            display: inline-block;
+            width: 3px; /* 커서도 약간 두껍게 */
+            height: 1.2em;
+            background-color: #ffffff; /* 커서 색상도 흰색으로 맞춤 */
+            margin-left: 5px;
+            vertical-align: middle;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
 
         #scroll-hint {
             position: absolute;
@@ -120,7 +168,6 @@
             transition: opacity 0.5s ease;
             opacity: 1;
         }
-        
         #scroll-hint i { color: #ffffff; font-size: 1.2rem; filter: drop-shadow(0 0 5px rgba(255,255,255,0.5)); }
 
         @keyframes bounce {
@@ -161,11 +208,33 @@
         .interest-list li { position: relative; padding-left: 20px; margin-bottom: 10px; color: #d1d5db; }
         .interest-list li::before { content: "•"; position: absolute; left: 0; color: #99c2ff; }
 
-        .pub-item { margin-bottom: 25px; padding-bottom: 25px; border-bottom: 1px dashed rgba(255,255,255,0.1); }
+        .pub-item { margin-bottom: 25px; padding-bottom: 25px; border-bottom: 1px dashed rgba(255,255,255,0.1); position: relative; }
         .pub-item:last-child { border-bottom: none; }
         
         .pub-title { font-size: 1.2rem; font-weight: bold; margin-bottom: 5px; }
         .pub-meta { color: #888; font-size: 0.9rem; }
+
+        /* --- [NEW] 4번: 논문 프리뷰 (Hover Image) --- */
+        #preview-tooltip {
+            position: fixed;
+            width: 400px;
+            height: auto;
+            background: rgba(0,0,0,0.8);
+            border: 1px solid rgba(153, 194, 255, 0.3);
+            border-radius: 12px;
+            pointer-events: none; /* 마우스 이벤트 통과 */
+            opacity: 0;
+            transform: scale(0.8);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            z-index: 9998; /* 커서보단 아래, 카드보단 위 */
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        #preview-tooltip img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
 
         /* [반응형] */
         @media (max-width: 1100px) {
@@ -175,15 +244,27 @@
                 background: rgba(0,0,0,0.8);
             }
             #home h1 { font-size: 4rem; }
+            #typing-wrapper { top: 55%; font-size: 1.2rem; }
         }
 
         @media (max-width: 768px) {
             nav { gap: 15px; }
             #home h1 { font-size: 3rem; }
+            #typing-wrapper { top: 55%; font-size: 1rem; }
+            /* 모바일에선 프리뷰 숨김 */
+            #preview-tooltip { display: none; }
         }
     </style>
 </head>
 <body>
+    
+    <div id="progress-container">
+        <div id="progress-bar"></div>
+    </div>
+
+    <div id="preview-tooltip">
+        <img id="preview-img" src="" alt="Publication Preview">
+    </div>
 
     <div class="cursor-dot"></div>
     <div class="cursor-outline"></div>
@@ -200,6 +281,10 @@
 
     <section id="home">
         <h1 id="main-title">Daewon Choi</h1>
+        <div id="typing-wrapper">
+            <span id="typing-text"></span><span class="cursor-blink"></span>
+        </div>
+
         <p id="scroll-hint">
             <i class="fa-solid fa-angles-down"></i>
             Scroll down to know more about me
@@ -240,23 +325,38 @@
     <section id="publication">
         <div class="glass-card">
             <h2>Publications</h2>
+            
             <div class="pub-item">
-                <div class="pub-title"><a href="https://robots-oh.github.io/TASMap/" target="_blank" class="pub-link">Task-Aware Semantic Map: Autonomous Robot Task Assignment Beyond Commands</a></div>
+                <div class="pub-title">
+                    <a href="https://robots-oh.github.io/TASMap/" target="_blank" class="pub-link hover-trigger" 
+                       data-image="./img/tasmap.png">
+                        Task-Aware Semantic Map: Autonomous Robot Task Assignment Beyond Commands
+                    </a>
+                </div>
                 <div class="pub-meta">ICRA 2025</div>
             </div>
             
             <div class="pub-item">
-                <div class="pub-title"><a href="https://robots-oh.github.io/tasmap_pp/" target="_blank" class="pub-link">Task-Aware Semantic Map++: Cost-Efficient Task Assignment with Advanced Benchmark</a></div>
+                <div class="pub-title">
+                    <a href="https://robots-oh.github.io/tasmap_pp/" target="_blank" class="pub-link hover-trigger"
+                       data-image="./img/tasmap_pp.jpg">
+                        Task-Aware Semantic Map++: Cost-Efficient Task Assignment with Advanced Benchmark
+                    </a>
+                </div>
                 <div class="pub-meta">RA-Letters</div>
             </div>
 
             <div class="pub-item">
-                <div class="pub-title">LITE-Planner: LLM-Reflective and Instinctive Task Execution via Personalized PageRank for Housekeeping Robot</div>
+                <div class="pub-title">
+                    LITE-Planner: LLM-Reflective and Instinctive Task Execution via Personalized PageRank for Housekeeping Robot
+                </div>
                 <div class="pub-meta">Work in Progress</div>
             </div>
 
             <div class="pub-item">
-                <div class="pub-title">DOLBi: Demonstration-based Object-centric Learning for Bimanual Manipulation</div>
+                <div class="pub-title">
+                    DOLBi: Demonstration-based Object-centric Learning for Bimanual Manipulation
+                </div>
                 <div class="pub-meta">Work in Progress</div>
             </div>
 
@@ -285,6 +385,7 @@
         const cursorOutline = document.querySelector('.cursor-outline');
         const scrollHint = document.getElementById('scroll-hint');
         const mainTitle = document.getElementById('main-title');
+        const typingWrapper = document.getElementById('typing-wrapper'); // [NEW]
 
         let mouseX = 0, mouseY = 0, outlineX = 0, outlineY = 0;
         let isMouseDown = false;
@@ -292,6 +393,81 @@
 
         let targetRotationX = 0, targetRotationY = 0;
         let currentRotationX = 0, currentRotationY = 0;
+
+        /* --- [NEW] 1번: 타이핑 효과 스크립트 --- */
+        const typingTextElement = document.getElementById('typing-text');
+        const typingWords = [
+            "Robotics",
+            "Computer Vision",
+            "Bimanual Manipulation",
+            "Task Planning",
+            "Everything New"
+        ];
+        let wordIndex = 0;
+        let charIndex = 0;
+        let isDeleting = false;
+        let typeSpeed = 100;
+
+        function typeEffect() {
+            const currentWord = typingWords[wordIndex];
+            
+            if (isDeleting) {
+                typingTextElement.textContent = currentWord.substring(0, charIndex - 1);
+                charIndex--;
+                typeSpeed = 50; // 지울 땐 빠르게
+            } else {
+                typingTextElement.textContent = currentWord.substring(0, charIndex + 1);
+                charIndex++;
+                typeSpeed = 100; // 쓸 땐 보통 속도
+            }
+
+            if (!isDeleting && charIndex === currentWord.length) {
+                isDeleting = true;
+                typeSpeed = 2000; // 다 쓰고 나서 잠시 대기
+            } else if (isDeleting && charIndex === 0) {
+                isDeleting = false;
+                wordIndex = (wordIndex + 1) % typingWords.length;
+                typeSpeed = 500; // 다음 단어 시작 전 잠시 대기
+            }
+
+            setTimeout(typeEffect, typeSpeed);
+        }
+        // 페이지 로드 후 실행
+        document.addEventListener('DOMContentLoaded', typeEffect);
+
+
+        /* --- [NEW] 4번: 논문 Hover 프리뷰 로직 --- */
+        const tooltip = document.getElementById('preview-tooltip');
+        const previewImg = document.getElementById('preview-img');
+        const triggers = document.querySelectorAll('.hover-trigger');
+
+        triggers.forEach(trigger => {
+            trigger.addEventListener('mouseenter', (e) => {
+                const imgSrc = trigger.getAttribute('data-image');
+                if(imgSrc) {
+                    previewImg.src = imgSrc;
+                    tooltip.style.opacity = '1';
+                    tooltip.style.transform = 'scale(1)';
+                }
+            });
+
+            trigger.addEventListener('mouseleave', () => {
+                tooltip.style.opacity = '0';
+                tooltip.style.transform = 'scale(0.8)';
+            });
+
+            trigger.addEventListener('mousemove', (e) => {
+                // 커서보다 약간 오른쪽 아래에 위치
+                const x = e.clientX + 20;
+                const y = e.clientY + 20;
+                
+                // 화면 밖으로 나가지 않게 조정 (간단한 처리)
+                // 실제 구현 시 window.innerWidth 체크해서 왼쪽으로 띄울 수도 있음
+                tooltip.style.left = `${x}px`;
+                tooltip.style.top = `${y}px`;
+            });
+        });
+
 
         // 클릭 이벤트 등록
         mainTitle.addEventListener('click', () => {
@@ -302,14 +478,22 @@
             const scrollY = window.scrollY;
             const winH = window.innerHeight;
             const winW = window.innerWidth;
+            const docH = document.body.scrollHeight;
+
+            /* --- [NEW] 3번: 스크롤 진행 바 업데이트 --- */
+            const scrolled = (scrollY / (docH - winH)) * 100;
+            document.getElementById('progress-bar').style.width = scrolled + "%";
+
 
             // 힌트 제어
             if (scrollY > 50) {
                 scrollHint.style.opacity = '0';
                 scrollHint.style.pointerEvents = 'none';
+                typingWrapper.style.opacity = '0'; // 스크롤 내리면 타이핑 텍스트도 숨김
             } else {
                 scrollHint.style.opacity = '1';
                 scrollHint.style.pointerEvents = 'auto';
+                typingWrapper.style.opacity = '1';
             }
 
             const startY = winH * 0.5;
@@ -336,7 +520,6 @@
             mainTitle.style.transform = `translate(-50%, -50%) scale(${currentScale})`;
 
             // [클릭 활성화 로직]
-            // 스크롤이 거의 다 올라갔을 때만 클릭 가능
             if (progress > 0.9) {
                 mainTitle.style.pointerEvents = 'auto';
                 mainTitle.style.cursor = 'pointer';
