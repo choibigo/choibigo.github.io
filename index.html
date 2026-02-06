@@ -15,11 +15,11 @@
             background-color: #08080a;
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             color: white; overflow-x: hidden;
-            cursor: none;
+            cursor: none; /* 기본 커서 숨김 */
         }
 
         ::-webkit-scrollbar { width: 0; }
-        a, button { cursor: none; }
+        a, button { cursor: none; } /* 링크 위에서도 커서 숨김 */
 
         #canvas-container {
             position: fixed;
@@ -117,36 +117,22 @@
             top: 60%; 
             left: 50%;
             transform: translateX(-50%);
-            font-size: 1.6rem; /* 크기 약간 키움 */
-            
-            /* [변경 포인트 1] 색상을 흰색으로 변경하여 파란 점들과 대비 */
+            font-size: 1.6rem; 
             color: #ffffff; 
-            
-            font-weight: 500; /* 폰트 두께 약간 증가 */
+            font-weight: 500;
             z-index: 89; 
             letter-spacing: 1px;
             font-family: 'Consolas', 'Monaco', monospace;
             opacity: 1;
             transition: opacity 0.3s;
-
-            /* [변경 포인트 2] 글자 뒤에 검은 그림자와 배경 흐림 효과 추가 */
             text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0,0,0,0.5);
-            
-            /* [선택 사항] 가독성을 위해 텍스트 뒤에 살짝 어두운 배경을 깔고 싶다면 아래 주석 해제 */
-            /*
-            background: rgba(0, 0, 0, 0.4);
-            padding: 8px 20px;
-            border-radius: 30px;
-            backdrop-filter: blur(2px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            */
         }
         
         .cursor-blink {
             display: inline-block;
-            width: 3px; /* 커서도 약간 두껍게 */
+            width: 3px; 
             height: 1.2em;
-            background-color: #ffffff; /* 커서 색상도 흰색으로 맞춤 */
+            background-color: #ffffff; 
             margin-left: 5px;
             vertical-align: middle;
             animation: blink 1s infinite;
@@ -167,6 +153,10 @@
             animation: bounce 2s infinite ease-in-out;
             transition: opacity 0.5s ease;
             opacity: 1;
+            
+            /* [수정됨] pointer-events는 켜두고, cursor: pointer는 제거 */
+            pointer-events: auto; 
+            /* cursor: pointer; <-- 이 줄을 제거하여 기본 커서(손가락)가 안 나오게 함 */
         }
         #scroll-hint i { color: #ffffff; font-size: 1.2rem; filter: drop-shadow(0 0 5px rgba(255,255,255,0.5)); }
 
@@ -385,7 +375,7 @@
         const cursorOutline = document.querySelector('.cursor-outline');
         const scrollHint = document.getElementById('scroll-hint');
         const mainTitle = document.getElementById('main-title');
-        const typingWrapper = document.getElementById('typing-wrapper'); // [NEW]
+        const typingWrapper = document.getElementById('typing-wrapper'); 
 
         let mouseX = 0, mouseY = 0, outlineX = 0, outlineY = 0;
         let isMouseDown = false;
@@ -393,6 +383,45 @@
 
         let targetRotationX = 0, targetRotationY = 0;
         let currentRotationX = 0, currentRotationY = 0;
+
+        /* --- [NEW Feature: 천천히 내려가는 자동 스크롤 로직] --- */
+        let autoScrollId = null;
+
+        // 1. 클릭 이벤트 리스너 추가
+        scrollHint.addEventListener('click', () => {
+            // 이미 실행 중이면 취소 (중복 방지)
+            if (autoScrollId) cancelAnimationFrame(autoScrollId);
+
+            function slowScroll() {
+                // 현재 스크롤 위치 + 창 높이가 문서 전체 높이보다 작으면 (아직 바닥이 아니면)
+                if ((window.innerHeight + window.scrollY) < document.body.scrollHeight - 2) {
+                    // 3px씩 부드럽게 이동 (속도 조절: 숫자가 클수록 빠름)
+                    window.scrollBy(0, 3);
+                    autoScrollId = requestAnimationFrame(slowScroll);
+                } else {
+                    // 바닥에 닿으면 종료
+                    autoScrollId = null;
+                }
+            }
+            slowScroll();
+        });
+
+        // 2. 사용자가 스크롤을 조작(휠, 터치, 키보드)하면 자동 스크롤 중단
+        const stopAutoScroll = () => {
+            if (autoScrollId) {
+                cancelAnimationFrame(autoScrollId);
+                autoScrollId = null;
+            }
+        };
+
+        window.addEventListener('wheel', stopAutoScroll);      // 마우스 휠
+        window.addEventListener('touchmove', stopAutoScroll);  // 모바일 터치 스크롤
+        window.addEventListener('keydown', (e) => {            // 키보드 방향키
+            if(e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === ' ') {
+                stopAutoScroll();
+            }
+        });
+        /* ----------------------------------------------------- */
 
         /* --- [NEW] 1번: 타이핑 효과 스크립트 --- */
         const typingTextElement = document.getElementById('typing-text');
@@ -414,25 +443,24 @@
             if (isDeleting) {
                 typingTextElement.textContent = currentWord.substring(0, charIndex - 1);
                 charIndex--;
-                typeSpeed = 50; // 지울 땐 빠르게
+                typeSpeed = 50; 
             } else {
                 typingTextElement.textContent = currentWord.substring(0, charIndex + 1);
                 charIndex++;
-                typeSpeed = 100; // 쓸 땐 보통 속도
+                typeSpeed = 100; 
             }
 
             if (!isDeleting && charIndex === currentWord.length) {
                 isDeleting = true;
-                typeSpeed = 2000; // 다 쓰고 나서 잠시 대기
+                typeSpeed = 2000; 
             } else if (isDeleting && charIndex === 0) {
                 isDeleting = false;
                 wordIndex = (wordIndex + 1) % typingWords.length;
-                typeSpeed = 500; // 다음 단어 시작 전 잠시 대기
+                typeSpeed = 500; 
             }
 
             setTimeout(typeEffect, typeSpeed);
         }
-        // 페이지 로드 후 실행
         document.addEventListener('DOMContentLoaded', typeEffect);
 
 
@@ -457,12 +485,8 @@
             });
 
             trigger.addEventListener('mousemove', (e) => {
-                // 커서보다 약간 오른쪽 아래에 위치
                 const x = e.clientX + 20;
                 const y = e.clientY + 20;
-                
-                // 화면 밖으로 나가지 않게 조정 (간단한 처리)
-                // 실제 구현 시 window.innerWidth 체크해서 왼쪽으로 띄울 수도 있음
                 tooltip.style.left = `${x}px`;
                 tooltip.style.top = `${y}px`;
             });
@@ -488,11 +512,11 @@
             // 힌트 제어
             if (scrollY > 50) {
                 scrollHint.style.opacity = '0';
-                scrollHint.style.pointerEvents = 'none';
-                typingWrapper.style.opacity = '0'; // 스크롤 내리면 타이핑 텍스트도 숨김
+                scrollHint.style.pointerEvents = 'none'; // 숨겨지면 클릭 방지
+                typingWrapper.style.opacity = '0'; 
             } else {
                 scrollHint.style.opacity = '1';
-                scrollHint.style.pointerEvents = 'auto';
+                scrollHint.style.pointerEvents = 'auto'; // 다시 보이면 클릭 허용
                 typingWrapper.style.opacity = '1';
             }
 
@@ -519,7 +543,6 @@
             mainTitle.style.top = `${currentTop}px`;
             mainTitle.style.transform = `translate(-50%, -50%) scale(${currentScale})`;
 
-            // [클릭 활성화 로직]
             if (progress > 0.9) {
                 mainTitle.style.pointerEvents = 'auto';
                 mainTitle.style.cursor = 'pointer';
@@ -541,7 +564,8 @@
 
         window.addEventListener('mousedown', (e) => {
             const isInsideCard = e.target.closest('.glass-card');
-            const isInteractive = e.target.closest('a') || e.target.closest('button') || e.target.id === 'main-title';
+            // scroll-hint 추가
+            const isInteractive = e.target.closest('a') || e.target.closest('button') || e.target.id === 'main-title' || e.target.id === 'scroll-hint';
             if (!isInsideCard && !isInteractive) isBackgroundDrag = true;
             isMouseDown = true;
             document.body.classList.add('clicking');
@@ -553,7 +577,8 @@
             document.body.classList.remove('clicking');
         });
 
-        document.querySelectorAll('a, button, .glass-card, #main-title').forEach(el => {
+        // scroll-hint hover 효과 추가 (이미 포함되어 있음)
+        document.querySelectorAll('a, button, .glass-card, #main-title, #scroll-hint').forEach(el => {
             el.addEventListener('mouseenter', () => document.body.classList.add('hovering'));
             el.addEventListener('mouseleave', () => document.body.classList.remove('hovering'));
         });
