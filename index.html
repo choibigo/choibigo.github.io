@@ -248,6 +248,25 @@
             object-fit: cover;
         }
 
+        .contact-content {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+        .profile-img {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%; /* 이미지를 동그랗게 */
+            object-fit: cover;
+            /* border: 3px solid rgba(153, 194, 255, 0.5); */
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s ease, border-color 0.3s ease;
+            pointer-events: auto;
+        }
+        .contact-info {
+            flex: 1;
+        }
+
         /* [반응형] */
         @media (max-width: 1100px) {
             nav {
@@ -378,10 +397,15 @@
     <section id="contact">
         <div class="glass-card">
             <h2>Contact</h2>
-            <p>
-                <strong style="color: #e0e0e0;">Email:</strong>
-                <a href="mailto:cbigo@hanyang.ac.kr" class="pub-link">cbigo@hanyang.ac.kr</a>
-            </p>
+            <div class="contact-content">
+                <img src="/img/my_photo.png" alt="Daewon Choi" class="profile-img">
+                <div class="contact-info">
+                    <p>
+                        <strong style="color: #e0e0e0;">Email:</strong>
+                        <a href="mailto:cbigo@hanyang.ac.kr" class="pub-link">cbigo@hanyang.ac.kr</a>
+                    </p>
+                    </div>
+            </div>
         </div>
     </section>
 
