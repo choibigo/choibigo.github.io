@@ -29,7 +29,7 @@
             user-select: none;
         }
 
-        /* --- [NEW] 3번: 스크롤 진행 바 --- */
+        /* --- 3번: 스크롤 진행 바 --- */
         #progress-container {
             position: fixed;
             top: 0; left: 0;
@@ -111,7 +111,7 @@
         }
         #home h1:hover { opacity: 0.8; }
 
-        /* --- [NEW] 1번: 타이핑 효과 텍스트 --- */
+        /* --- 1번: 타이핑 효과 텍스트 --- */
         #typing-wrapper {
             position: fixed;
             top: 60%; 
@@ -139,8 +139,7 @@
         }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 
-
-        /* --- [수정됨] Scroll Hint 버튼 + Hover 효과 --- */
+        /* --- Scroll Hint 버튼 + Hover 효과 --- */
         #scroll-hint {
             position: absolute;
             bottom: 15%; 
@@ -153,15 +152,11 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.4);
             display: flex; flex-direction: column; align-items: center; gap: 8px; 
             animation: bounce 2s infinite ease-in-out;
-            
-            /* [NEW] 부드러운 전환 효과 추가 */
             transition: opacity 0.5s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
             opacity: 1;
-            
             pointer-events: auto; 
         }
 
-        /* [NEW] 마우스 올렸을 때 빛나는 효과 */
         #scroll-hint:hover {
             color: #99c2ff;
             border-color: rgba(153, 194, 255, 0.8);
@@ -172,11 +167,9 @@
             color: #ffffff; 
             font-size: 1.2rem; 
             filter: drop-shadow(0 0 5px rgba(255,255,255,0.5)); 
-            /* [NEW] 아이콘도 색상 부드럽게 전환 */
             transition: color 0.3s ease, filter 0.3s ease;
         }
 
-        /* [NEW] 마우스 올렸을 때 아이콘도 같이 빛나게 */
         #scroll-hint:hover i {
             color: #99c2ff;
             filter: drop-shadow(0 0 8px #99c2ff);
@@ -226,7 +219,7 @@
         .pub-title { font-size: 1.2rem; font-weight: bold; margin-bottom: 5px; }
         .pub-meta { color: #888; font-size: 0.9rem; }
 
-        /* --- [NEW] 4번: 논문 프리뷰 (Hover Image) --- */
+        /* --- 4번: 논문 프리뷰 (Hover Image) --- */
         #preview-tooltip {
             position: fixed;
             width: 400px;
@@ -234,11 +227,11 @@
             background: rgba(0,0,0,0.8);
             border: 1px solid rgba(153, 194, 255, 0.3);
             border-radius: 12px;
-            pointer-events: none; /* 마우스 이벤트 통과 */
+            pointer-events: none;
             opacity: 0;
             transform: scale(0.8);
             transition: opacity 0.2s ease, transform 0.2s ease;
-            z-index: 9998; /* 커서보단 아래, 카드보단 위 */
+            z-index: 9998;
             overflow: hidden;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
@@ -248,32 +241,48 @@
             object-fit: cover;
         }
 
-        .contact-content {
-            display: flex;
-            align-items: center;
-            gap: 30px;
-        }
+        .contact-content { display: flex; align-items: center; gap: 30px; }
         .profile-img {
-            width: 150px;
-            height: 150px;
-            border-radius: 50%; /* 이미지를 동그랗게 */
-            object-fit: cover;
-            /* border: 3px solid rgba(153, 194, 255, 0.5); */
+            width: 150px; height: 150px; border-radius: 50%; object-fit: cover;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-            transition: transform 0.3s ease, border-color 0.3s ease;
-            pointer-events: auto;
+            transition: transform 0.3s ease, border-color 0.3s ease; pointer-events: auto;
         }
-        .contact-info {
-            flex: 1;
+        .contact-info { flex: 1; }
+
+        /* --- 음악 토글 버튼 스타일 --- */
+        #music-toggle {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(153, 194, 255, 0.2);
+            color: #ffffff;
+            font-size: 1.2rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            cursor: none; /* 기존 커스텀 커서 유지 */
+            transition: all 0.3s ease;
+            pointer-events: auto;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        #music-toggle:hover {
+            background: rgba(153, 194, 255, 0.2);
+            color: #99c2ff;
+            border-color: #99c2ff;
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(153, 194, 255, 0.4);
         }
 
         /* [반응형] */
         @media (max-width: 1100px) {
-            nav {
-                justify-content: center; 
-                padding: 20px; gap: 20px;
-                background: rgba(0,0,0,0.8);
-            }
+            nav { justify-content: center; padding: 20px; gap: 20px; background: rgba(0,0,0,0.8); }
             #home h1 { font-size: 4rem; }
             #typing-wrapper { top: 55%; font-size: 1.2rem; }
         }
@@ -282,8 +291,8 @@
             nav { gap: 15px; }
             #home h1 { font-size: 3rem; }
             #typing-wrapper { top: 55%; font-size: 1rem; }
-            /* 모바일에선 프리뷰 숨김 */
             #preview-tooltip { display: none; }
+            #music-toggle { bottom: 20px; right: 20px; width: 40px; height: 40px; font-size: 1rem; }
         }
     </style>
 </head>
@@ -292,6 +301,14 @@
     <div id="progress-container">
         <div id="progress-bar"></div>
     </div>
+
+    <audio id="bg-music" loop>
+        <source src="./bgm.mp3" type="audio/mpeg">
+    </audio>
+
+    <button id="music-toggle" aria-label="Toggle Music">
+        <i class="fa-solid fa-volume-xmark"></i>
+    </button>
 
     <div id="preview-tooltip">
         <img id="preview-img" src="" alt="Publication Preview">
@@ -430,29 +447,22 @@
         let targetRotationX = 0, targetRotationY = 0;
         let currentRotationX = 0, currentRotationY = 0;
 
-        /* --- [NEW Feature: 천천히 내려가는 자동 스크롤 로직] --- */
+        /* --- 천천히 내려가는 자동 스크롤 로직 --- */
         let autoScrollId = null;
 
-        // 1. 클릭 이벤트 리스너 추가
         scrollHint.addEventListener('click', () => {
-            // 이미 실행 중이면 취소 (중복 방지)
             if (autoScrollId) cancelAnimationFrame(autoScrollId);
-
             function slowScroll() {
-                // 현재 스크롤 위치 + 창 높이가 문서 전체 높이보다 작으면 (아직 바닥이 아니면)
                 if ((window.innerHeight + window.scrollY) < document.body.scrollHeight - 2) {
-                    // 3px씩 부드럽게 이동 (속도 조절: 숫자가 클수록 빠름)
                     window.scrollBy(0, 3);
                     autoScrollId = requestAnimationFrame(slowScroll);
                 } else {
-                    // 바닥에 닿으면 종료
                     autoScrollId = null;
                 }
             }
             slowScroll();
         });
 
-        // 2. 사용자가 스크롤을 조작(휠, 터치, 키보드)하면 자동 스크롤 중단
         const stopAutoScroll = () => {
             if (autoScrollId) {
                 cancelAnimationFrame(autoScrollId);
@@ -460,16 +470,15 @@
             }
         };
 
-        window.addEventListener('wheel', stopAutoScroll);      // 마우스 휠
-        window.addEventListener('touchmove', stopAutoScroll);  // 모바일 터치 스크롤
-        window.addEventListener('keydown', (e) => {            // 키보드 방향키
+        window.addEventListener('wheel', stopAutoScroll);
+        window.addEventListener('touchmove', stopAutoScroll);
+        window.addEventListener('keydown', (e) => {
             if(e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === ' ') {
                 stopAutoScroll();
             }
         });
-        /* ----------------------------------------------------- */
 
-        /* --- [NEW] 1번: 타이핑 효과 스크립트 --- */
+        /* --- 1번: 타이핑 효과 스크립트 --- */
         const typingTextElement = document.getElementById('typing-text');
         const typingWords = [
             "Robotics",
@@ -510,7 +519,7 @@
         document.addEventListener('DOMContentLoaded', typeEffect);
 
 
-        /* --- [NEW] 4번: 논문 Hover 프리뷰 로직 --- */
+        /* --- 4번: 논문 Hover 프리뷰 로직 --- */
         const tooltip = document.getElementById('preview-tooltip');
         const previewImg = document.getElementById('preview-img');
         const triggers = document.querySelectorAll('.hover-trigger');
@@ -538,7 +547,6 @@
             });
         });
 
-
         // 클릭 이벤트 등록
         mainTitle.addEventListener('click', () => {
             scrollToSection('home');
@@ -550,19 +558,18 @@
             const winW = window.innerWidth;
             const docH = document.body.scrollHeight;
 
-            /* --- [NEW] 3번: 스크롤 진행 바 업데이트 --- */
+            /* --- 3번: 스크롤 진행 바 업데이트 --- */
             const scrolled = (scrollY / (docH - winH)) * 100;
             document.getElementById('progress-bar').style.width = scrolled + "%";
-
 
             // 힌트 제어
             if (scrollY > 50) {
                 scrollHint.style.opacity = '0';
-                scrollHint.style.pointerEvents = 'none'; // 숨겨지면 클릭 방지
+                scrollHint.style.pointerEvents = 'none';
                 typingWrapper.style.opacity = '0'; 
             } else {
                 scrollHint.style.opacity = '1';
-                scrollHint.style.pointerEvents = 'auto'; // 다시 보이면 클릭 허용
+                scrollHint.style.pointerEvents = 'auto';
                 typingWrapper.style.opacity = '1';
             }
 
@@ -610,7 +617,6 @@
 
         window.addEventListener('mousedown', (e) => {
             const isInsideCard = e.target.closest('.glass-card');
-            // scroll-hint 추가
             const isInteractive = e.target.closest('a') || e.target.closest('button') || e.target.id === 'main-title' || e.target.id === 'scroll-hint';
             if (!isInsideCard && !isInteractive) isBackgroundDrag = true;
             isMouseDown = true;
@@ -623,7 +629,7 @@
             document.body.classList.remove('clicking');
         });
 
-        // scroll-hint hover 효과 추가 (이미 포함되어 있음)
+        // custom cursor hover 효과
         document.querySelectorAll('a, button, .glass-card, #main-title, #scroll-hint').forEach(el => {
             el.addEventListener('mouseenter', () => document.body.classList.add('hovering'));
             el.addEventListener('mouseleave', () => document.body.classList.remove('hovering'));
@@ -640,6 +646,44 @@
             entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('visible'); });
         }, { threshold: 0.2 });
         document.querySelectorAll('.glass-card').forEach(card => observer.observe(card));
+
+        /* --- 음악 재생/일시정지 및 랜덤 시작 제어 로직 --- */
+        const bgMusic = document.getElementById('bg-music');
+        const musicToggleBtn = document.getElementById('music-toggle');
+        const musicIcon = musicToggleBtn.querySelector('i');
+        let isMusicPlaying = false;
+
+        // 음악 볼륨 설정 (0.0 ~ 1.0)
+        bgMusic.volume = 0.5; 
+
+        // [NEW] 오디오의 총 길이 안에서 랜덤한 지점을 시작점으로 설정하는 함수
+        function setRandomStartTime() {
+            if (bgMusic.duration) {
+                bgMusic.currentTime = Math.random() * bgMusic.duration;
+            }
+        }
+
+        // 오디오 메타데이터(길이 등)가 로드되었는지 확인 후 랜덤 시간 할당
+        if (bgMusic.readyState >= 1) { // 메타데이터가 이미 있는 경우
+            setRandomStartTime();
+        } else { // 아직 불러오지 못한 경우 이벤트 리스너로 대기
+            bgMusic.addEventListener('loadedmetadata', setRandomStartTime);
+        }
+
+        musicToggleBtn.addEventListener('click', () => {
+            if (isMusicPlaying) {
+                bgMusic.pause();
+                musicIcon.classList.remove('fa-volume-high');
+                musicIcon.classList.add('fa-volume-xmark');
+            } else {
+                bgMusic.play().catch(error => {
+                    console.log("Audio play failed:", error);
+                });
+                musicIcon.classList.remove('fa-volume-xmark');
+                musicIcon.classList.add('fa-volume-high');
+            }
+            isMusicPlaying = !isMusicPlaying;
+        });
 
         // Three.js
         const scene = new THREE.Scene();
