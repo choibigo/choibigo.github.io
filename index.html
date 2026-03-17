@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>cbigo</title>
     
-    <!-- <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon fill='%2399c2ff' points='50,15 61,45 95,45 67,65 78,95 50,75 22,95 33,65 5,45 39,45'/%3E%3C/svg%3E"> -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='black' rx='15'/%3E%3Ctext x='50' y='50' font-family='Arial, sans-serif' font-size='70' font-weight='bold' fill='%2399c2ff' text-anchor='middle' dy='.35em'%3EC%3C/text%3E%3C/svg%3E">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
@@ -606,30 +605,6 @@
             }
         });
 
-        window.addEventListener('mousemove', (e) => {
-            mouseX = e.clientX; mouseY = e.clientY;
-            cursorDot.style.left = `${mouseX}px`;
-            cursorDot.style.top = `${mouseY}px`;
-            if (isBackgroundDrag) {
-                targetRotationX += e.movementX * 0.002;
-                targetRotationY += e.movementY * 0.002;
-            }
-        });
-
-        window.addEventListener('mousedown', (e) => {
-            const isInsideCard = e.target.closest('.glass-card');
-            const isInteractive = e.target.closest('a') || e.target.closest('button') || e.target.id === 'main-title' || e.target.id === 'scroll-hint';
-            if (!isInsideCard && !isInteractive) isBackgroundDrag = true;
-            isMouseDown = true;
-            document.body.classList.add('clicking');
-        });
-
-        window.addEventListener('mouseup', () => {
-            isMouseDown = false;
-            isBackgroundDrag = false;
-            document.body.classList.remove('clicking');
-        });
-
         // custom cursor hover 효과
         document.querySelectorAll('a, button, .glass-card, #main-title, #scroll-hint').forEach(el => {
             el.addEventListener('mouseenter', () => document.body.classList.add('hovering'));
@@ -671,7 +646,6 @@
             bgMusic.addEventListener('loadedmetadata', setRandomStartTime);
         }
 
-        // 수정된 부분: 노래가 끝났을 때 다시 랜덤 위치부터 재생하도록 설정
         bgMusic.addEventListener('ended', () => {
             setRandomStartTime();
             bgMusic.play().catch(error => {
@@ -694,7 +668,12 @@
             isMusicPlaying = !isMusicPlaying;
         });
 
-        // Three.js
+        // ==========================================
+        // Three.js 로직 (마우스 인터랙션 추가됨)
+        // ==========================================
+        const REPEL_RADIUS = 8.0;     // 마우스가 파티클에 영향을 미치는 거리 (반경)
+        const REPEL_STRENGTH = 3.5;   // 파티클이 밀려나는 정도 (조금만 움직이게 하려면 값을 낮추세요)
+
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
@@ -717,6 +696,7 @@
         const initialPositions = new Float32Array(particleCount * 3);
         const targetPositions = new Float32Array(particleCount * 3);
         const introPositions = new Float32Array(particleCount * 3);
+        const mouseOffsets = new Float32Array(particleCount * 3); // 마우스 반응을 위한 오프셋 배열
 
         for (let i = 0; i < particleCount; i++) {
             const u = Math.random(), v = Math.random();
@@ -731,6 +711,9 @@
             introPositions[i*3] = (Math.random()-0.5)*800; 
             introPositions[i*3+1] = (Math.random()-0.5)*800;
             introPositions[i*3+2] = (Math.random()-0.5)*800;
+            mouseOffsets[i*3] = 0;
+            mouseOffsets[i*3+1] = 0;
+            mouseOffsets[i*3+2] = 0;
         }
 
         geometry.setAttribute('position', new THREE.BufferAttribute(currentPositions, 3));
@@ -739,6 +722,43 @@
         }));
         scene.add(particles);
 
+        // 마우스의 3D 공간 좌표 계산을 위한 변수들
+        const mouse2D = new THREE.Vector2(-1000, -1000);
+        const mouse3D = new THREE.Vector3();
+        const raycaster = new THREE.Raycaster();
+        const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0); // z=0 평면
+
+        // 마우스 움직임 이벤트 통합
+        window.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX; mouseY = e.clientY;
+            
+            // 2D 마우스 좌표를 정규화 기기 좌표(NDC)로 변환 (-1 ~ +1)
+            mouse2D.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse2D.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+            cursorDot.style.left = `${mouseX}px`;
+            cursorDot.style.top = `${mouseY}px`;
+            
+            if (isBackgroundDrag) {
+                targetRotationX += e.movementX * 0.002;
+                targetRotationY += e.movementY * 0.002;
+            }
+        });
+
+        window.addEventListener('mousedown', (e) => {
+            const isInsideCard = e.target.closest('.glass-card');
+            const isInteractive = e.target.closest('a') || e.target.closest('button') || e.target.id === 'main-title' || e.target.id === 'scroll-hint';
+            if (!isInsideCard && !isInteractive) isBackgroundDrag = true;
+            isMouseDown = true;
+            document.body.classList.add('clicking');
+        });
+
+        window.addEventListener('mouseup', () => {
+            isMouseDown = false;
+            isBackgroundDrag = false;
+            document.body.classList.remove('clicking');
+        });
+
         let startTime = null;
         function animate(timestamp) {
             requestAnimationFrame(animate);
@@ -746,32 +766,76 @@
             const elapsed = timestamp - startTime;
             let introProgress = Math.min(elapsed / 1200, 1);
             const scrollStrength = Math.min(Math.max(window.scrollY / (document.body.scrollHeight - window.innerHeight), 0), 1);
-            const pos = particles.geometry.attributes.position.array;
-            for (let i = 0; i < particleCount; i++) {
-                const ix = i*3, iy = i*3+1, iz = i*3+2;
-                if (introProgress < 1) {
-                    pos[ix] = introPositions[ix] + (initialPositions[ix]-introPositions[ix])*(1-Math.pow(1-introProgress,3));
-                    pos[iy] = introPositions[iy] + (initialPositions[iy]-introPositions[iy])*(1-Math.pow(1-introProgress,3));
-                    pos[iz] = introPositions[iz] + (initialPositions[iz]-introPositions[iz])*(1-Math.pow(1-introProgress,3));
-                } else {
-                    pos[ix] = initialPositions[ix] + (targetPositions[ix]-initialPositions[ix])*scrollStrength;
-                    pos[iy] = initialPositions[iy] + (targetPositions[iy]-initialPositions[iy])*scrollStrength;
-                    pos[iz] = initialPositions[iz] + (targetPositions[iz]-initialPositions[iz])*scrollStrength;
-                }
-            }
-            particles.geometry.attributes.position.needsUpdate = true;
+            
+            // 회전 업데이트 (먼저 실행하여 현재 프레임의 matrix를 최신화)
             currentRotationX += (targetRotationX - currentRotationX) * 0.05;
             currentRotationY += (targetRotationY - currentRotationY) * 0.05;
             particles.rotation.y = currentRotationX + (timestamp * 0.0001);
             particles.rotation.x = currentRotationY;
+            particles.updateMatrixWorld();
+
+            // 마우스의 3D 좌표를 파티클 로컬 좌표계로 변환
+            raycaster.setFromCamera(mouse2D, camera);
+            raycaster.ray.intersectPlane(plane, mouse3D);
+            const localMouse = mouse3D.clone();
+            particles.worldToLocal(localMouse);
+
+            const pos = particles.geometry.attributes.position.array;
+            for (let i = 0; i < particleCount; i++) {
+                const ix = i*3, iy = i*3+1, iz = i*3+2;
+                let baseX, baseY, baseZ;
+
+                // 기본 위치 계산 (인트로 및 스크롤에 따른 형태 변환)
+                if (introProgress < 1) {
+                    baseX = introPositions[ix] + (initialPositions[ix]-introPositions[ix])*(1-Math.pow(1-introProgress,3));
+                    baseY = introPositions[iy] + (initialPositions[iy]-introPositions[iy])*(1-Math.pow(1-introProgress,3));
+                    baseZ = introPositions[iz] + (initialPositions[iz]-introPositions[iz])*(1-Math.pow(1-introProgress,3));
+                } else {
+                    baseX = initialPositions[ix] + (targetPositions[ix]-initialPositions[ix])*scrollStrength;
+                    baseY = initialPositions[iy] + (targetPositions[iy]-initialPositions[iy])*scrollStrength;
+                    baseZ = initialPositions[iz] + (targetPositions[iz]-initialPositions[iz])*scrollStrength;
+                }
+
+                // 마우스 인터랙션 계산 (밀어내기)
+                let dx = baseX - localMouse.x;
+                let dy = baseY - localMouse.y;
+                let dz = baseZ - localMouse.z;
+                let distSq = dx*dx + dy*dy + dz*dz;
+                
+                let targetOffsetX = 0, targetOffsetY = 0, targetOffsetZ = 0;
+
+                if (distSq < REPEL_RADIUS * REPEL_RADIUS && distSq > 0) {
+                    let dist = Math.sqrt(distSq);
+                    let force = Math.pow((REPEL_RADIUS - dist) / REPEL_RADIUS, 2) * REPEL_STRENGTH;
+                    targetOffsetX = (dx / dist) * force;
+                    targetOffsetY = (dy / dist) * force;
+                    targetOffsetZ = (dz / dist) * force;
+                }
+
+                // 부드럽게 돌아오는 효과를 위한 보간 (Lerp)
+                mouseOffsets[ix] += (targetOffsetX - mouseOffsets[ix]) * 0.1;
+                mouseOffsets[iy] += (targetOffsetY - mouseOffsets[iy]) * 0.1;
+                mouseOffsets[iz] += (targetOffsetZ - mouseOffsets[iz]) * 0.1;
+
+                // 최종 위치 적용
+                pos[ix] = baseX + mouseOffsets[ix];
+                pos[iy] = baseY + mouseOffsets[iy];
+                pos[iz] = baseZ + mouseOffsets[iz];
+            }
+            
+            particles.geometry.attributes.position.needsUpdate = true;
+            
             outlineX += (mouseX - outlineX) * 0.15; outlineY += (mouseY - outlineY) * 0.15;
             cursorOutline.style.left = `${outlineX}px`; cursorOutline.style.top = `${outlineY}px`;
+            
             renderer.render(scene, camera);
         }
+
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
+        
         animate();
     </script>
 </body>
