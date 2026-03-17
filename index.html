@@ -189,7 +189,8 @@
             max-width: 850px; width: 100%;
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
             opacity: 0; transform: translateY(50px);
-            transition: all 1s ease-out;
+            /* ★성능 최적화: all 대신 opacity와 transform만 transition 처리 (js로 box-shadow를 부드럽게 변경하기 위함) */
+            transition: opacity 1s ease-out, transform 1s ease-out;
             pointer-events: auto;
             z-index: 10;
         }
@@ -814,9 +815,24 @@
                 const avgBass = bassSum / bassBins;
                 
                 const targetBeatValue = avgBass / 255.0;
-                musicBeatValue += (targetBeatValue - musicBeatValue) * 0.2; 
+                musicBeatValue += (targetBeatValue - musicBeatValue) * 0.1; 
+                
+                // ★ 4번 효과 추가: 배경색 및 UI 네온 글로우
+                const bgIntensity = Math.floor(musicBeatValue * 12);
+                document.body.style.backgroundColor = `rgb(${8 + bgIntensity}, ${8 + bgIntensity}, ${10 + bgIntensity})`;
+                
+                document.querySelectorAll('.glass-card').forEach(card => {
+                    card.style.boxShadow = `0 8px 32px 0 rgba(153, 194, 255, ${0.3 + musicBeatValue * 0.5})`;
+                });
+                
             } else {
                 musicBeatValue += (0 - musicBeatValue) * 0.1;
+                
+                // ★ 원래 상태로 복귀
+                document.body.style.backgroundColor = '#08080a';
+                document.querySelectorAll('.glass-card').forEach(card => {
+                    card.style.boxShadow = `0 8px 32px 0 rgba(0, 0, 0, 0.3)`;
+                });
             }
             
             let beatScale = 1.0 + (musicBeatValue * BEAT_STRENGTH);
