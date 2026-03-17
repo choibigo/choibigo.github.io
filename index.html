@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>cbigo</title>
+    <title>CBIGO</title>
     
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='black' rx='15'/%3E%3Ctext x='50' y='50' font-family='Arial, sans-serif' font-size='70' font-weight='bold' fill='%2399c2ff' text-anchor='middle' dy='.35em'%3EC%3C/text%3E%3C/svg%3E">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
@@ -301,9 +301,7 @@
         <div id="progress-bar"></div>
     </div>
 
-    <audio id="bg-music" crossorigin="anonymous">
-        <source src="./bgm_2.mp3" type="audio/mpeg">
-    </audio>
+    <audio id="bg-music" crossorigin="anonymous"></audio>
 
     <button id="music-toggle" aria-label="Toggle Music">
         <i class="fa-solid fa-volume-xmark"></i>
@@ -623,8 +621,15 @@
         document.querySelectorAll('.glass-card').forEach(card => observer.observe(card));
 
         // ==========================================
-        // 음악 분석 및 재생 제어 (Web Audio API 추가)
+        // 음악 분석 및 재생 제어 (랜덤 플레이리스트 로직 추가)
         // ==========================================
+        
+        // ★ 플레이리스트 작성 (원하는 파일을 자유롭게 추가하세요!)
+        const bgmList = [
+            './bgm_1.mp3',
+            './bgm_2.mp3',
+        ];
+
         const bgMusic = document.getElementById('bg-music');
         const musicToggleBtn = document.getElementById('music-toggle');
         const musicIcon = musicToggleBtn.querySelector('i');
@@ -637,25 +642,33 @@
 
         bgMusic.volume = 0.5; 
 
-        function setRandomStartTime() {
+        // 랜덤하게 다음 곡을 골라 세팅하는 함수
+        function changeToRandomTrack() {
+            const randomIndex = Math.floor(Math.random() * bgmList.length);
+            bgMusic.src = bgmList[randomIndex];
+            bgMusic.load(); // 새로운 소스를 로드합니다 (이후 loadedmetadata 이벤트 발생)
+        }
+
+        // 페이지 진입 시 최초 곡 하나 세팅
+        changeToRandomTrack();
+
+        // 메타데이터(곡 길이 등) 로딩 완료 시 랜덤 시작 위치 지정
+        bgMusic.addEventListener('loadedmetadata', () => {
             if (bgMusic.duration) {
                 bgMusic.currentTime = Math.random() * bgMusic.duration;
             }
-        }
+            // 곡이 자연스럽게 변경된 상황(이미 재생중이었음)이면 바로 다시 재생시작
+            if (isMusicPlaying) {
+                bgMusic.play().catch(console.error);
+            }
+        });
 
-        if (bgMusic.readyState >= 1) { 
-            setRandomStartTime();
-        } else { 
-            bgMusic.addEventListener('loadedmetadata', setRandomStartTime);
-        }
-
+        // 한 곡 재생이 끝나면 다른 랜덤 곡으로 변경
         bgMusic.addEventListener('ended', () => {
-            setRandomStartTime();
-            bgMusic.play().catch(console.error);
+            changeToRandomTrack();
         });
 
         // 사용자가 처음 버튼을 누를 때 AudioContext를 초기화합니다.
-        // (브라우저 정책상 사용자 인터랙션 이후에만 초기화 가능)
         function initAudio() {
             if (!isAudioInitialized) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -665,7 +678,7 @@
                 source.connect(analyser);
                 analyser.connect(audioCtx.destination);
                 
-                analyser.fftSize = 256; // 분석할 주파수 밴드 수 설정
+                analyser.fftSize = 256; 
                 const bufferLength = analyser.frequencyBinCount;
                 dataArray = new Uint8Array(bufferLength);
                 
@@ -696,7 +709,7 @@
         // ==========================================
         const REPEL_RADIUS = 8.0;     
         const REPEL_STRENGTH = 3.5;   
-        const BEAT_STRENGTH = 0.4;    // ★ 둠칫둠칫 강도 조절 (원하는 만큼 수치 변경)
+        const BEAT_STRENGTH = 0.4;    // ★ 둠칫둠칫 강도 조절
 
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -792,7 +805,6 @@
             if (isAudioInitialized && isMusicPlaying) {
                 analyser.getByteFrequencyData(dataArray);
                 
-                // 저음역대(Bass) 주파수들의 평균을 구합니다 (0~10번 밴드 정도가 드럼/베이스 역할)
                 let bassSum = 0;
                 const bassBins = 10;
                 for (let i = 0; i < bassBins; i++) {
@@ -800,15 +812,12 @@
                 }
                 const avgBass = bassSum / bassBins;
                 
-                // 0~255 값을 0.0 ~ 1.0 비율로 변환 후 부드럽게 보간(Lerp) 처리
                 const targetBeatValue = avgBass / 255.0;
                 musicBeatValue += (targetBeatValue - musicBeatValue) * 0.2; 
             } else {
-                // 음악이 일시정지되면 서서히 가라앉게 만듦
                 musicBeatValue += (0 - musicBeatValue) * 0.1;
             }
             
-            // 최종적으로 파티클에 곱해줄 배율 (1.0 기본 + 음악 비트에 따른 추가 배율)
             let beatScale = 1.0 + (musicBeatValue * BEAT_STRENGTH);
 
             // 회전 업데이트
@@ -838,7 +847,7 @@
                     baseZ = initialPositions[iz] + (targetPositions[iz]-initialPositions[iz])*scrollStrength;
                 }
 
-                // ★ 계산된 기본 위치에 음악 비트 스케일을 곱해줍니다
+                // ★ 비트 스케일 적용
                 baseX *= beatScale;
                 baseY *= beatScale;
                 baseZ *= beatScale;
