@@ -15,11 +15,11 @@
             background-color: #08080a;
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             color: white; overflow-x: hidden;
-            cursor: none; /* 기본 커서 숨김 */
+            cursor: none;
         }
 
         ::-webkit-scrollbar { width: 0; }
-        a, button { cursor: none; } /* 링크 위에서도 커서 숨김 */
+        a, button { cursor: none; }
 
         #canvas-container {
             position: fixed;
@@ -34,7 +34,7 @@
             position: fixed;
             top: 0; left: 0;
             width: 100%; height: 3px;
-            z-index: 10000; /* 최상단 */
+            z-index: 10000;
             background: rgba(255, 255, 255, 0.1);
         }
         #progress-bar {
@@ -92,7 +92,6 @@
             text-align: center; 
         }
 
-        /* 타이틀 스타일 */
         #home h1 {
             position: fixed; 
             top: 50%; left: 50%;
@@ -266,7 +265,7 @@
             justify-content: center;
             align-items: center;
             z-index: 9999;
-            cursor: none; /* 기존 커스텀 커서 유지 */
+            cursor: none;
             transition: all 0.3s ease;
             pointer-events: auto;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
@@ -302,7 +301,7 @@
         <div id="progress-bar"></div>
     </div>
 
-    <audio id="bg-music">
+    <audio id="bg-music" crossorigin="anonymous">
         <source src="./bgm.mp3" type="audio/mpeg">
     </audio>
 
@@ -623,23 +622,27 @@
         }, { threshold: 0.2 });
         document.querySelectorAll('.glass-card').forEach(card => observer.observe(card));
 
-        /* --- 음악 재생/일시정지 및 랜덤 시작 제어 로직 --- */
+        // ==========================================
+        // 음악 분석 및 재생 제어 (Web Audio API 추가)
+        // ==========================================
         const bgMusic = document.getElementById('bg-music');
         const musicToggleBtn = document.getElementById('music-toggle');
         const musicIcon = musicToggleBtn.querySelector('i');
         let isMusicPlaying = false;
 
-        // 음악 볼륨 설정 (0.0 ~ 1.0)
+        // Web Audio API 관련 변수
+        let audioCtx, analyser, dataArray;
+        let isAudioInitialized = false;
+        let musicBeatValue = 0; // 비트에 반응하는 수치 (0.0 ~ 1.0)
+
         bgMusic.volume = 0.5; 
 
-        // 오디오의 총 길이 안에서 랜덤한 지점을 시작점으로 설정하는 함수
         function setRandomStartTime() {
             if (bgMusic.duration) {
                 bgMusic.currentTime = Math.random() * bgMusic.duration;
             }
         }
 
-        // 오디오 메타데이터(길이 등)가 로드되었는지 확인 후 랜덤 시간 할당
         if (bgMusic.readyState >= 1) { 
             setRandomStartTime();
         } else { 
@@ -648,20 +651,40 @@
 
         bgMusic.addEventListener('ended', () => {
             setRandomStartTime();
-            bgMusic.play().catch(error => {
-                console.log("Audio replay failed:", error);
-            });
+            bgMusic.play().catch(console.error);
         });
 
+        // 사용자가 처음 버튼을 누를 때 AudioContext를 초기화합니다.
+        // (브라우저 정책상 사용자 인터랙션 이후에만 초기화 가능)
+        function initAudio() {
+            if (!isAudioInitialized) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioCtx.createAnalyser();
+                
+                const source = audioCtx.createMediaElementSource(bgMusic);
+                source.connect(analyser);
+                analyser.connect(audioCtx.destination);
+                
+                analyser.fftSize = 256; // 분석할 주파수 밴드 수 설정
+                const bufferLength = analyser.frequencyBinCount;
+                dataArray = new Uint8Array(bufferLength);
+                
+                isAudioInitialized = true;
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
         musicToggleBtn.addEventListener('click', () => {
+            initAudio(); // 오디오 분석기 초기화
+
             if (isMusicPlaying) {
                 bgMusic.pause();
                 musicIcon.classList.remove('fa-volume-high');
                 musicIcon.classList.add('fa-volume-xmark');
             } else {
-                bgMusic.play().catch(error => {
-                    console.log("Audio play failed:", error);
-                });
+                bgMusic.play().catch(console.error);
                 musicIcon.classList.remove('fa-volume-xmark');
                 musicIcon.classList.add('fa-volume-high');
             }
@@ -669,10 +692,11 @@
         });
 
         // ==========================================
-        // Three.js 로직 (마우스 인터랙션 추가됨)
+        // Three.js 로직 (마우스 + 둠칫둠칫 모션)
         // ==========================================
-        const REPEL_RADIUS = 8.0;     // 마우스가 파티클에 영향을 미치는 거리 (반경)
-        const REPEL_STRENGTH = 3.5;   // 파티클이 밀려나는 정도 (조금만 움직이게 하려면 값을 낮추세요)
+        const REPEL_RADIUS = 8.0;     
+        const REPEL_STRENGTH = 3.5;   
+        const BEAT_STRENGTH = 0.4;    // ★ 둠칫둠칫 강도 조절 (원하는 만큼 수치 변경)
 
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -696,7 +720,7 @@
         const initialPositions = new Float32Array(particleCount * 3);
         const targetPositions = new Float32Array(particleCount * 3);
         const introPositions = new Float32Array(particleCount * 3);
-        const mouseOffsets = new Float32Array(particleCount * 3); // 마우스 반응을 위한 오프셋 배열
+        const mouseOffsets = new Float32Array(particleCount * 3); 
 
         for (let i = 0; i < particleCount; i++) {
             const u = Math.random(), v = Math.random();
@@ -722,17 +746,14 @@
         }));
         scene.add(particles);
 
-        // 마우스의 3D 공간 좌표 계산을 위한 변수들
         const mouse2D = new THREE.Vector2(-1000, -1000);
         const mouse3D = new THREE.Vector3();
         const raycaster = new THREE.Raycaster();
-        const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0); // z=0 평면
+        const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0); 
 
-        // 마우스 움직임 이벤트 통합
         window.addEventListener('mousemove', (e) => {
             mouseX = e.clientX; mouseY = e.clientY;
             
-            // 2D 마우스 좌표를 정규화 기기 좌표(NDC)로 변환 (-1 ~ +1)
             mouse2D.x = (e.clientX / window.innerWidth) * 2 - 1;
             mouse2D.y = -(e.clientY / window.innerHeight) * 2 + 1;
 
@@ -767,14 +788,36 @@
             let introProgress = Math.min(elapsed / 1200, 1);
             const scrollStrength = Math.min(Math.max(window.scrollY / (document.body.scrollHeight - window.innerHeight), 0), 1);
             
-            // 회전 업데이트 (먼저 실행하여 현재 프레임의 matrix를 최신화)
+            // --- 🎵 오디오 주파수 분석 (둠칫둠칫) ---
+            if (isAudioInitialized && isMusicPlaying) {
+                analyser.getByteFrequencyData(dataArray);
+                
+                // 저음역대(Bass) 주파수들의 평균을 구합니다 (0~10번 밴드 정도가 드럼/베이스 역할)
+                let bassSum = 0;
+                const bassBins = 10;
+                for (let i = 0; i < bassBins; i++) {
+                    bassSum += dataArray[i];
+                }
+                const avgBass = bassSum / bassBins;
+                
+                // 0~255 값을 0.0 ~ 1.0 비율로 변환 후 부드럽게 보간(Lerp) 처리
+                const targetBeatValue = avgBass / 255.0;
+                musicBeatValue += (targetBeatValue - musicBeatValue) * 0.2; 
+            } else {
+                // 음악이 일시정지되면 서서히 가라앉게 만듦
+                musicBeatValue += (0 - musicBeatValue) * 0.1;
+            }
+            
+            // 최종적으로 파티클에 곱해줄 배율 (1.0 기본 + 음악 비트에 따른 추가 배율)
+            let beatScale = 1.0 + (musicBeatValue * BEAT_STRENGTH);
+
+            // 회전 업데이트
             currentRotationX += (targetRotationX - currentRotationX) * 0.05;
             currentRotationY += (targetRotationY - currentRotationY) * 0.05;
             particles.rotation.y = currentRotationX + (timestamp * 0.0001);
             particles.rotation.x = currentRotationY;
             particles.updateMatrixWorld();
 
-            // 마우스의 3D 좌표를 파티클 로컬 좌표계로 변환
             raycaster.setFromCamera(mouse2D, camera);
             raycaster.ray.intersectPlane(plane, mouse3D);
             const localMouse = mouse3D.clone();
@@ -785,7 +828,6 @@
                 const ix = i*3, iy = i*3+1, iz = i*3+2;
                 let baseX, baseY, baseZ;
 
-                // 기본 위치 계산 (인트로 및 스크롤에 따른 형태 변환)
                 if (introProgress < 1) {
                     baseX = introPositions[ix] + (initialPositions[ix]-introPositions[ix])*(1-Math.pow(1-introProgress,3));
                     baseY = introPositions[iy] + (initialPositions[iy]-introPositions[iy])*(1-Math.pow(1-introProgress,3));
@@ -796,7 +838,12 @@
                     baseZ = initialPositions[iz] + (targetPositions[iz]-initialPositions[iz])*scrollStrength;
                 }
 
-                // 마우스 인터랙션 계산 (밀어내기)
+                // ★ 계산된 기본 위치에 음악 비트 스케일을 곱해줍니다
+                baseX *= beatScale;
+                baseY *= beatScale;
+                baseZ *= beatScale;
+
+                // 마우스 인터랙션 계산
                 let dx = baseX - localMouse.x;
                 let dy = baseY - localMouse.y;
                 let dz = baseZ - localMouse.z;
@@ -812,12 +859,10 @@
                     targetOffsetZ = (dz / dist) * force;
                 }
 
-                // 부드럽게 돌아오는 효과를 위한 보간 (Lerp)
                 mouseOffsets[ix] += (targetOffsetX - mouseOffsets[ix]) * 0.1;
                 mouseOffsets[iy] += (targetOffsetY - mouseOffsets[iy]) * 0.1;
                 mouseOffsets[iz] += (targetOffsetZ - mouseOffsets[iz]) * 0.1;
 
-                // 최종 위치 적용
                 pos[ix] = baseX + mouseOffsets[ix];
                 pos[iy] = baseY + mouseOffsets[iy];
                 pos[iz] = baseZ + mouseOffsets[iz];
