@@ -25,6 +25,11 @@
         a, button { cursor: none; }
 
         /* --- 로딩 스크린 연결 적용 --- */
+        body.is-loading {
+            overflow: hidden; /* PC 휠 스크롤 및 키보드 스크롤 방지 */
+            touch-action: none; /* 모바일 스와이프/터치 스크롤 방지 */
+        }
+
         body.is-loading nav, body.is-loading #music-toggle, body.is-loading #typing-wrapper,
         body.is-loading #scroll-hint, body.is-loading #progress-container { opacity: 0; pointer-events: none; }
         nav, #music-toggle, #typing-wrapper, #scroll-hint, #progress-container { transition: opacity 1s ease; }
