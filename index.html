@@ -9,7 +9,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
     <style>
-        /* --- 1. 기본 설정 --- */
+        /* --- [에러 수정 및 디테일 개선] 드래그 색상 밝고 선명하게 변경 --- */
+        ::selection { background: rgba(153, 194, 255, 0.7); color: #ffffff; text-shadow: none; }
+        ::-moz-selection { background: rgba(153, 194, 255, 0.7); color: #ffffff; text-shadow: none; }
+
         body {
             margin: 0; padding: 0;
             background-color: #08080a;
@@ -21,304 +24,170 @@
         ::-webkit-scrollbar { width: 0; }
         a, button { cursor: none; }
 
-        #canvas-container {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            z-index: -1;
-            user-select: none;
-        }
+        /* --- 로딩 스크린 연결 적용 --- */
+        body.is-loading nav, body.is-loading #music-toggle, body.is-loading #typing-wrapper,
+        body.is-loading #scroll-hint, body.is-loading #progress-container { opacity: 0; pointer-events: none; }
+        nav, #music-toggle, #typing-wrapper, #scroll-hint, #progress-container { transition: opacity 1s ease; }
 
-        /* --- 3번: 스크롤 진행 바 --- */
-        #progress-container {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 3px;
-            z-index: 10000;
-            background: rgba(255, 255, 255, 0.1);
+        #preloader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #08080a; z-index: 85; 
+            transition: opacity 1s ease, visibility 1s ease;
         }
-        #progress-bar {
-            height: 100%;
-            background: #99c2ff;
-            width: 0%;
-            box-shadow: 0 0 10px #99c2ff;
-            transition: width 0.1s;
+        .loader-line {
+            position: absolute; top: calc(50% + 60px); left: 50%; transform: translateX(-50%);
+            width: 0; height: 2px; background-color: #99c2ff;
+            animation: loadLine 1.5s cubic-bezier(0.77, 0, 0.175, 1) forwards;
+            box-shadow: 0 0 10px rgba(153, 194, 255, 0.5);
         }
+        @keyframes loadLine { 0% { width: 0; opacity: 0; } 50% { opacity: 1; } 100% { width: 250px; opacity: 1; } }
 
-        /* --- 2. 커스텀 마우스 커서 --- */
-        .cursor-dot, .cursor-outline {
-            position: fixed;
-            top: 0; left: 0;
-            transform: translate(-50%, -50%);
-            border-radius: 50%;
-            z-index: 9999;
-            pointer-events: none;
-        }
+        /* --- 앰비언트 글로우 --- */
+        .ambient-glow { position: fixed; border-radius: 50%; filter: blur(150px); z-index: -1; pointer-events: none; opacity: 0.4; transition: opacity 2s ease; }
+        .glow-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: radial-gradient(circle, rgba(153, 194, 255, 0.15) 0%, transparent 70%); }
+        .glow-2 { bottom: -20%; right: -10%; width: 60vw; height: 60vw; background: radial-gradient(circle, rgba(100, 150, 255, 0.1) 0%, transparent 70%); }
+
+        #canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -2; user-select: none; }
+
+        #progress-container { position: fixed; top: 0; left: 0; width: 100%; height: 3px; z-index: 10000; background: rgba(255, 255, 255, 0.1); }
+        #progress-bar { height: 100%; background: #99c2ff; width: 0%; box-shadow: 0 0 10px #99c2ff; transition: width 0.1s; }
+
+        .cursor-dot, .cursor-outline { position: fixed; top: 0; left: 0; transform: translate(-50%, -50%); border-radius: 50%; z-index: 9999; pointer-events: none; }
         .cursor-dot { width: 8px; height: 8px; background-color: #99c2ff; transition: transform 0.2s; }
-        .cursor-outline {
-            width: 40px; height: 40px;
-            border: 1px solid rgba(153, 194, 255, 0.5);
-            transition: width 0.2s, height 0.2s, background-color 0.2s, border-color 0.2s;
-        }
+        .cursor-outline { width: 40px; height: 40px; border: 1px solid rgba(153, 194, 255, 0.5); transition: width 0.2s, height 0.2s, background-color 0.2s, border-color 0.2s; }
         body.hovering .cursor-outline { width: 60px; height: 60px; background-color: rgba(153, 194, 255, 0.1); border-color: transparent; }
         body.clicking .cursor-outline { width: 30px; height: 30px; background-color: rgba(153, 194, 255, 0.4); border-color: #99c2ff; }
         body.clicking .cursor-dot { transform: translate(-50%, -50%) scale(0.5); }
 
-        /* --- 3. 네비게이션 --- */
         nav {
-            position: fixed;
-            top: 0; width: 100%;
-            padding: 20px 40px;
-            display: flex; justify-content: flex-end; gap: 40px;
-            z-index: 100; box-sizing: border-box;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent);
-            pointer-events: none; 
+            position: fixed; top: 0; width: 100%; padding: 20px 40px; display: flex; justify-content: flex-end; gap: 40px;
+            z-index: 100; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent); pointer-events: none; 
         }
+
+        /* --- [에러 수정 및 디테일 개선] Nav 글씨 꿀렁임 제거 --- */
         nav a { 
-            color: #ccc; text-decoration: none; font-size: 1.1rem; font-weight: 500; transition: color 0.3s;
-            pointer-events: auto; 
+            position: relative;
+            color: #888; text-decoration: none; font-size: 1.1rem; 
+            font-weight: 500; /* 기본 굵기 유지 */
+            transition: all 0.3s ease; pointer-events: auto; padding-bottom: 5px; 
         }
-        nav a:hover { color: #99c2ff; }
+        nav a:hover { color: #ffffff; }
+        nav a.active { 
+            color: #ffffff; 
+            /* font-weight: bold; 삭제 - 이 부분이 꿀렁임의 주범입니다. */
+            /* 대신 발광(text-shadow)을 더 선명하게 주어 굵어진 것 같은 착시를 줍니다. */
+            text-shadow: 0 0 15px rgba(153, 194, 255, 0.9), 0 0 5px rgba(255, 255, 255, 0.6); 
+        }
 
-        /* --- 4. 섹션 레이아웃 --- */
-        section {
-            min-height: 100vh;
-            display: flex; justify-content: center; align-items: center;
-            position: relative; padding: 20px; box-sizing: border-box;
-        }
-
-        #home { 
-            flex-direction: column; 
-            text-align: center; 
-        }
+        section { min-height: 100vh; display: flex; justify-content: center; align-items: center; position: relative; padding: 20px; box-sizing: border-box; }
+        #home { flex-direction: column; text-align: center; }
 
         #home h1 {
-            position: fixed; 
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%); 
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
             font-size: 5rem; font-weight: 800; margin: 0; letter-spacing: -2px;
             background: linear-gradient(160deg, #ffffff 40%, #80b3ff 100%);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            filter: drop-shadow(0 0 30px rgba(153, 194, 255, 0.6));
-            z-index: 90;
-            width: 100%; text-align: center;
-            will-change: top, transform;
-            white-space: nowrap;
-            pointer-events: none; 
-            cursor: default; 
-            transition: opacity 0.3s;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 30px rgba(153, 194, 255, 0.6)); 
+            z-index: 90; width: 100%; text-align: center; will-change: top, transform; white-space: nowrap; pointer-events: none; cursor: default; transition: opacity 0.3s;
         }
         #home h1:hover { opacity: 0.8; }
 
-        /* --- 1번: 타이핑 효과 텍스트 --- */
         #typing-wrapper {
-            position: fixed;
-            top: 60%; 
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 1.6rem; 
-            color: #ffffff; 
-            font-weight: 500;
-            z-index: 89; 
-            letter-spacing: 1px;
-            font-family: 'Consolas', 'Monaco', monospace;
-            opacity: 1;
-            transition: opacity 0.3s;
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0,0,0,0.5);
+            position: fixed; top: 60%; left: 50%; transform: translateX(-50%); font-size: 1.6rem; color: #ffffff; font-weight: 500; z-index: 89; letter-spacing: 1px;
+            font-family: 'Consolas', 'Monaco', monospace; transition: opacity 0.5s; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0,0,0,0.5);
         }
-        
-        .cursor-blink {
-            display: inline-block;
-            width: 3px; 
-            height: 1.2em;
-            background-color: #ffffff; 
-            margin-left: 5px;
-            vertical-align: middle;
-            animation: blink 1s infinite;
-        }
+        .cursor-blink { display: inline-block; width: 3px; height: 1.2em; background-color: #ffffff; margin-left: 5px; vertical-align: middle; animation: blink 1s infinite; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 
-        /* --- Scroll Hint 버튼 + Hover 효과 --- */
         #scroll-hint {
-            position: absolute;
-            bottom: 15%; 
-            font-size: 1.1rem; 
-            color: #ffffff;
-            background: rgba(0, 0, 0, 0.4);
-            padding: 10px 24px; border-radius: 50px;
-            backdrop-filter: blur(5px);
-            border: 1px solid rgba(255,255,255,0.15); 
-            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            position: absolute; bottom: 15%; font-size: 1.1rem; color: #ffffff;
+            background: rgba(0, 0, 0, 0.4); padding: 10px 24px; border-radius: 50px;
+            backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 4px 20px rgba(0,0,0,0.4);
             display: flex; flex-direction: column; align-items: center; gap: 8px; 
-            animation: bounce 2s infinite ease-in-out;
-            transition: opacity 0.5s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
-            opacity: 1;
-            pointer-events: auto; 
+            animation: bounce 2s infinite ease-in-out; transition: opacity 0.5s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease; pointer-events: auto; 
         }
+        #scroll-hint:hover { color: #99c2ff; border-color: rgba(153, 194, 255, 0.8); box-shadow: 0 0 20px rgba(153, 194, 255, 0.5); }
+        #scroll-hint i { color: #ffffff; font-size: 1.2rem; filter: drop-shadow(0 0 5px rgba(255,255,255,0.5)); transition: color 0.3s ease, filter 0.3s ease; }
+        #scroll-hint:hover i { color: #99c2ff; filter: drop-shadow(0 0 8px #99c2ff); }
+        @keyframes bounce { 0%, 20%, 50%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-10px); } 60% { transform: translateY(-5px); } }
 
-        #scroll-hint:hover {
-            color: #99c2ff;
-            border-color: rgba(153, 194, 255, 0.8);
-            box-shadow: 0 0 20px rgba(153, 194, 255, 0.5);
-        }
-
-        #scroll-hint i { 
-            color: #ffffff; 
-            font-size: 1.2rem; 
-            filter: drop-shadow(0 0 5px rgba(255,255,255,0.5)); 
-            transition: color 0.3s ease, filter 0.3s ease;
-        }
-
-        #scroll-hint:hover i {
-            color: #99c2ff;
-            filter: drop-shadow(0 0 8px #99c2ff);
-        }
-
-        @keyframes bounce {
-            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
-            40% { transform: translateY(-10px); }
-            60% { transform: translateY(-5px); }
-        }
-
-        /* --- 5. 글래스모피즘 카드 --- */
         .glass-card {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 20px; padding: 40px;
-            max-width: 850px; width: 100%;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-            opacity: 0; transform: translateY(50px);
-            /* ★성능 최적화: all 대신 opacity와 transform만 transition 처리 (js로 box-shadow를 부드럽게 변경하기 위함) */
-            transition: opacity 1s ease-out, transform 1s ease-out;
-            pointer-events: auto;
-            z-index: 10;
+            background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 24px; padding: 60px; max-width: 850px; width: 100%; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            opacity: 0; transform: translateY(50px); transition: opacity 1s ease-out, transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1); pointer-events: auto; z-index: 10;
         }
         .glass-card.visible { opacity: 1; transform: translateY(0); }
-        .glass-card h2 {
-            font-size: 2.5rem; margin-top: 0; color: #99c2ff;
-            border-bottom: 1px solid rgba(153, 194, 255, 0.2);
-            padding-bottom: 15px; margin-bottom: 20px;
-            display: flex; justify-content: space-between; align-items: center;
-        }
 
+        .glass-card h2 { font-size: 2.5rem; margin-top: 0; color: #99c2ff; border-bottom: 1px solid rgba(153, 194, 255, 0.2); padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; }
         .github-link { font-size: 1.8rem; color: rgba(153, 194, 255, 0.7); transition: all 0.3s ease; text-decoration: none; }
         .github-link:hover { color: #ffffff; transform: scale(1.1); filter: drop-shadow(0 0 10px rgba(153, 194, 255, 0.8)); }
-
-        .glass-card p { font-size: 1.1rem; line-height: 1.7; color: #d1d5db; }
+        .glass-card p { font-size: 1.15rem; line-height: 1.9; color: #d1d5db; }
         .pub-link { color: #99c2ff; text-decoration: none; border-bottom: 1px solid rgba(153, 194, 255, 0.3); transition: all 0.3s ease; display: inline-block; }
         .pub-link:hover { color: #ffffff; border-bottom-color: #99c2ff; }
 
         .interest-list { list-style: none; padding: 0; }
-        .interest-list li { position: relative; padding-left: 20px; margin-bottom: 10px; color: #d1d5db; }
+        .interest-list li { position: relative; padding-left: 20px; margin-bottom: 15px; color: #d1d5db; font-size: 1.1rem; line-height: 1.8;}
         .interest-list li::before { content: "•"; position: absolute; left: 0; color: #99c2ff; }
 
-        .pub-item { margin-bottom: 25px; padding-bottom: 25px; border-bottom: 1px dashed rgba(255,255,255,0.1); position: relative; }
-        .pub-item:last-child { border-bottom: none; }
-        
-        .pub-title { font-size: 1.2rem; font-weight: bold; margin-bottom: 5px; }
-        .pub-meta { color: #888; font-size: 0.9rem; }
+        .pub-item { margin-bottom: 30px; padding-bottom: 30px; border-bottom: 1px dashed rgba(255,255,255,0.1); position: relative; }
+        .pub-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .pub-title { font-size: 1.25rem; font-weight: bold; margin-bottom: 8px; line-height: 1.5; }
+        .pub-meta { color: #888; font-size: 0.95rem; }
 
-        /* --- 4번: 논문 프리뷰 (Hover Image) --- */
         #preview-tooltip {
-            position: fixed;
-            width: 400px;
-            height: auto;
-            background: rgba(0,0,0,0.8);
-            border: 1px solid rgba(153, 194, 255, 0.3);
-            border-radius: 12px;
-            pointer-events: none;
-            opacity: 0;
-            transform: scale(0.8);
-            transition: opacity 0.2s ease, transform 0.2s ease;
-            z-index: 9998;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            position: fixed; width: 400px; height: auto; background: rgba(0,0,0,0.8);
+            border: 1px solid rgba(153, 194, 255, 0.3); border-radius: 12px; pointer-events: none;
+            opacity: 0; transform: scale(0.8); transition: opacity 0.2s ease, transform 0.2s ease;
+            z-index: 9998; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
-        #preview-tooltip img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
+        #preview-tooltip img { width: 100%; height: 100%; object-fit: cover; }
 
-        .contact-content { display: flex; align-items: center; gap: 30px; }
+        .contact-content { display: flex; align-items: center; gap: 40px; } 
         .profile-img {
-            width: 150px; height: 150px; border-radius: 50%; object-fit: cover;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-            transition: transform 0.3s ease, border-color 0.3s ease; pointer-events: auto;
+            width: 150px; height: 150px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease; pointer-events: auto;
         }
+        .profile-img:hover { transform: scale(1.05); box-shadow: 0 0 30px rgba(153, 194, 255, 0.4); }
         .contact-info { flex: 1; }
 
-        /* --- 음악 토글 버튼 스타일 --- */
         #music-toggle {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(153, 194, 255, 0.2);
-            color: #ffffff;
-            font-size: 1.2rem;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            cursor: none;
-            transition: all 0.3s ease;
-            pointer-events: auto;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            position: fixed; bottom: 30px; right: 30px; width: 50px; height: 50px; border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(153, 194, 255, 0.2);
+            color: #ffffff; font-size: 1.2rem; display: flex; justify-content: center; align-items: center;
+            z-index: 9999; cursor: none; transition: all 0.3s ease; pointer-events: auto; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
         }
+        #music-toggle:hover { background: rgba(153, 194, 255, 0.2); color: #99c2ff; border-color: #99c2ff; transform: scale(1.1); box-shadow: 0 0 20px rgba(153, 194, 255, 0.4); }
 
-        #music-toggle:hover {
-            background: rgba(153, 194, 255, 0.2);
-            color: #99c2ff;
-            border-color: #99c2ff;
-            transform: scale(1.1);
-            box-shadow: 0 0 20px rgba(153, 194, 255, 0.4);
-        }
+        footer { text-align: center; padding: 40px 20px; color: rgba(255, 255, 255, 0.4); font-size: 0.9rem; margin-top: 50px; border-top: 1px dashed rgba(255, 255, 255, 0.1); position: relative; z-index: 10; pointer-events: none; }
 
-        /* [반응형] */
         @media (max-width: 1100px) {
             nav { justify-content: center; padding: 20px; gap: 20px; background: rgba(0,0,0,0.8); }
-            #home h1 { font-size: 4rem; }
-            #typing-wrapper { top: 55%; font-size: 1.2rem; }
+            #home h1 { font-size: 4rem; } #typing-wrapper { top: 55%; font-size: 1.2rem; }
         }
-
         @media (max-width: 768px) {
-            nav { gap: 15px; }
-            #home h1 { font-size: 3rem; }
-            #typing-wrapper { top: 55%; font-size: 1rem; }
-            #preview-tooltip { display: none; }
-            #music-toggle { bottom: 20px; right: 20px; width: 40px; height: 40px; font-size: 1rem; }
+            nav { gap: 15px; } #home h1 { font-size: 3rem; } #typing-wrapper { top: 55%; font-size: 1rem; }
+            #preview-tooltip { display: none; } #music-toggle { bottom: 20px; right: 20px; width: 40px; height: 40px; font-size: 1rem; }
+            .glass-card { padding: 40px 20px; } .contact-content { flex-direction: column; text-align: center; } .loader-line { top: calc(50% + 40px); }
         }
     </style>
 </head>
-<body>
+
+<body class="is-loading">
     
-    <div id="progress-container">
-        <div id="progress-bar"></div>
-    </div>
+    <div id="preloader"><div class="loader-line"></div></div>
+
+    <div id="progress-container"><div id="progress-bar"></div></div>
+    <div class="ambient-glow glow-1"></div><div class="ambient-glow glow-2"></div>
 
     <audio id="bg-music" crossorigin="anonymous"></audio>
+    <button id="music-toggle" aria-label="Toggle Music"><i class="fa-solid fa-volume-xmark"></i></button>
 
-    <button id="music-toggle" aria-label="Toggle Music">
-        <i class="fa-solid fa-volume-xmark"></i>
-    </button>
+    <div id="preview-tooltip"><img id="preview-img" src="" alt="Publication Preview"></div>
 
-    <div id="preview-tooltip">
-        <img id="preview-img" src="" alt="Publication Preview">
-    </div>
-
-    <div class="cursor-dot"></div>
-    <div class="cursor-outline"></div>
-
+    <div class="cursor-dot"></div><div class="cursor-outline"></div>
     <div id="canvas-container"></div>
 
     <nav id="navbar">
-        <a onclick="scrollToSection('home')">Home</a>
+        <a onclick="scrollToSection('home')" class="active">Home</a>
         <a onclick="scrollToSection('about')">About</a>
         <a onclick="scrollToSection('research')">Research</a>
         <a onclick="scrollToSection('publication')">Publication</a>
@@ -327,31 +196,18 @@
 
     <section id="home">
         <h1 id="main-title">Daewon Choi</h1>
-        <div id="typing-wrapper">
-            <span id="typing-text"></span><span class="cursor-blink"></span>
-        </div>
-
-        <p id="scroll-hint">
-            <i class="fa-solid fa-angles-down"></i>
-            Scroll down to know more about me
-        </p>
+        <div id="typing-wrapper"><span id="typing-text"></span><span class="cursor-blink"></span></div>
+        <p id="scroll-hint"><i class="fa-solid fa-angles-down"></i> Scroll down to know more about me</p>
     </section>
 
     <section id="about">
         <div class="glass-card">
-            <h2>
-                About Me
-                <a href="https://github.com/choibigo" target="_blank" class="github-link">
-                    <i class="fa-brands fa-github"></i>
-                </a>
-            </h2>
+            <h2>About Me <a href="https://github.com/choibigo" target="_blank" class="github-link"><i class="fa-brands fa-github"></i></a></h2>
             <p>
                 Hello!<br>
                 I am currently pursuing a Ph.D. at <strong>Hanyang University</strong>, advised by <a href="https://sites.google.com/view/robots-oh/lab" target="_blank" class="pub-link"><strong>Prof. Yoon-seon Oh</strong></a> (2023-Present).<br>
-                Prior to my doctoral studies, I worked as a Computer Vision Researcher at 
-                <a href="https://www.mirero.co.kr/" target="_blank" class="pub-link">Mirero System</a> (2020-2023).<br>
-                I received my B.S. in Computer Science and Engineering from 
-                <a href="https://csai.jbnu.ac.kr/csai/index.do" target="_blank" class="pub-link">Jeonbuk National University</a> (2015-2020).
+                Prior to my doctoral studies, I worked as a Computer Vision Researcher at <a href="https://www.mirero.co.kr/" target="_blank" class="pub-link">Mirero System</a> (2020-2023).<br>
+                I received my B.S. in Computer Science and Engineering from <a href="https://csai.jbnu.ac.kr/csai/index.do" target="_blank" class="pub-link">Jeonbuk National University</a> (2015-2020).
             </p>
         </div>
     </section>
@@ -371,41 +227,30 @@
     <section id="publication">
         <div class="glass-card">
             <h2>Publications</h2>
-            
             <div class="pub-item">
                 <div class="pub-title">
-                    <a href="https://robots-oh.github.io/TASMap/" target="_blank" class="pub-link hover-trigger" 
-                       data-image="./img/tasmap.png">
+                    <a href="https://robots-oh.github.io/TASMap/" target="_blank" class="pub-link hover-trigger" data-image="./img/tasmap.png">
                         Task-Aware Semantic Map: Autonomous Robot Task Assignment Beyond Commands
                     </a>
                 </div>
                 <div class="pub-meta">ICRA 2025</div>
             </div>
-            
             <div class="pub-item">
                 <div class="pub-title">
-                    <a href="https://robots-oh.github.io/tasmap_pp/" target="_blank" class="pub-link hover-trigger"
-                       data-image="./img/tasmap_pp.jpg">
+                    <a href="https://robots-oh.github.io/tasmap_pp/" target="_blank" class="pub-link hover-trigger" data-image="./img/tasmap_pp.jpg">
                         Task-Aware Semantic Map++: Cost-Efficient Task Assignment with Advanced Benchmark
                     </a>
                 </div>
                 <div class="pub-meta">RA-Letters</div>
             </div>
-
             <div class="pub-item">
-                <div class="pub-title">
-                    LITE-Planner: LLM-Reflective and Instinctive Task Execution via Personalized PageRank for Housekeeping Robot
-                </div>
+                <div class="pub-title">LITE-Planner: LLM-Reflective and Instinctive Task Execution via Personalized PageRank for Housekeeping Robot</div>
                 <div class="pub-meta">Work in Progress</div>
             </div>
-
             <div class="pub-item">
-                <div class="pub-title">
-                    DOLBi: Demonstration-based Object-centric Learning for Bimanual Manipulation
-                </div>
+                <div class="pub-title">DOLBi: Demonstration-based Object-centric Learning for Bimanual Manipulation</div>
                 <div class="pub-meta">Work in Progress</div>
             </div>
-
         </div>
     </section>
 
@@ -415,497 +260,201 @@
             <div class="contact-content">
                 <img src="./img/my_photo.png" alt="Daewon Choi" class="profile-img">
                 <div class="contact-info">
-                    <p>
-                        <strong style="color: #e0e0e0;">Email:</strong>
-                        <a href="mailto:cbigo@hanyang.ac.kr" class="pub-link">cbigo@hanyang.ac.kr</a>
-                    </p>
-                    </div>
+                    <p><strong style="color: #e0e0e0;">Email:</strong> <a href="mailto:cbigo@hanyang.ac.kr" class="pub-link">cbigo@hanyang.ac.kr</a></p>
+                </div>
             </div>
         </div>
     </section>
 
-    <div style="height: 30vh;"></div>
+    <div style="height: 10vh;"></div>
+    
+    <footer>
+        <p>© 2026 Daewon Choi. All rights reserved. <br> <span style="font-size: 0.8rem; opacity: 0.6;">Designed with Three.js</span></p>
+    </footer>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
+        window.addEventListener('load', () => {
+            const preloader = document.getElementById('preloader');
+            setTimeout(() => {
+                preloader.style.opacity = '0';
+                preloader.style.visibility = 'hidden';
+                document.body.classList.remove('is-loading');
+                setTimeout(typeEffect, 600);
+            }, 1200); 
+        });
+
         if (history.scrollRestoration) history.scrollRestoration = 'manual';
         window.scrollTo(0, 0);
 
-        const cursorDot = document.querySelector('.cursor-dot');
-        const cursorOutline = document.querySelector('.cursor-outline');
-        const scrollHint = document.getElementById('scroll-hint');
-        const mainTitle = document.getElementById('main-title');
-        const typingWrapper = document.getElementById('typing-wrapper'); 
+        const cursorDot = document.querySelector('.cursor-dot'); const cursorOutline = document.querySelector('.cursor-outline');
+        const scrollHint = document.getElementById('scroll-hint'); const mainTitle = document.getElementById('main-title'); const typingWrapper = document.getElementById('typing-wrapper'); 
 
-        let mouseX = 0, mouseY = 0, outlineX = 0, outlineY = 0;
-        let isMouseDown = false;
-        let isBackgroundDrag = false;
-
-        let targetRotationX = 0, targetRotationY = 0;
-        let currentRotationX = 0, currentRotationY = 0;
-
-        /* --- 천천히 내려가는 자동 스크롤 로직 --- */
-        let autoScrollId = null;
+        let mouseX = 0, mouseY = 0, outlineX = 0, outlineY = 0; let isMouseDown = false; let isBackgroundDrag = false; let targetRotationX = 0, targetRotationY = 0; let currentRotationX = 0, currentRotationY = 0; let autoScrollId = null;
 
         scrollHint.addEventListener('click', () => {
             if (autoScrollId) cancelAnimationFrame(autoScrollId);
-            function slowScroll() {
-                if ((window.innerHeight + window.scrollY) < document.body.scrollHeight - 2) {
-                    window.scrollBy(0, 3);
-                    autoScrollId = requestAnimationFrame(slowScroll);
-                } else {
-                    autoScrollId = null;
-                }
-            }
+            function slowScroll() { if ((window.innerHeight + window.scrollY) < document.body.scrollHeight - 2) { window.scrollBy(0, 3); autoScrollId = requestAnimationFrame(slowScroll); } else { autoScrollId = null; } }
             slowScroll();
         });
 
-        const stopAutoScroll = () => {
-            if (autoScrollId) {
-                cancelAnimationFrame(autoScrollId);
-                autoScrollId = null;
-            }
-        };
+        const stopAutoScroll = () => { if (autoScrollId) { cancelAnimationFrame(autoScrollId); autoScrollId = null; } };
+        window.addEventListener('wheel', stopAutoScroll); window.addEventListener('touchmove', stopAutoScroll); window.addEventListener('keydown', (e) => { if(['ArrowUp','ArrowDown',' '].includes(e.key)) stopAutoScroll(); });
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
 
-        window.addEventListener('wheel', stopAutoScroll);
-        window.addEventListener('touchmove', stopAutoScroll);
-        window.addEventListener('keydown', (e) => {
-            if(e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === ' ') {
-                stopAutoScroll();
-            }
-        });
-
-        /* --- 1번: 타이핑 효과 스크립트 --- */
-        const typingTextElement = document.getElementById('typing-text');
-        const typingWords = [
-            "Robotics",
-            "Computer Vision",
-            "Bimanual Manipulation",
-            "Task Planning",
-            "Everything New"
-        ];
-        let wordIndex = 0;
-        let charIndex = 0;
-        let isDeleting = false;
-        let typeSpeed = 100;
+        const typingTextElement = document.getElementById('typing-text'); const typingWords = ["Robotics", "Computer Vision", "Bimanual Manipulation", "Task Planning", "Everything New"];
+        let wordIndex = 0, charIndex = 0, isDeleting = false, typeSpeed = 100;
 
         function typeEffect() {
             const currentWord = typingWords[wordIndex];
-            
-            if (isDeleting) {
-                typingTextElement.textContent = currentWord.substring(0, charIndex - 1);
-                charIndex--;
-                typeSpeed = 50; 
-            } else {
-                typingTextElement.textContent = currentWord.substring(0, charIndex + 1);
-                charIndex++;
-                typeSpeed = 100; 
-            }
-
-            if (!isDeleting && charIndex === currentWord.length) {
-                isDeleting = true;
-                typeSpeed = 2000; 
-            } else if (isDeleting && charIndex === 0) {
-                isDeleting = false;
-                wordIndex = (wordIndex + 1) % typingWords.length;
-                typeSpeed = 500; 
-            }
-
+            if (isDeleting) { typingTextElement.textContent = currentWord.substring(0, charIndex - 1); charIndex--; typeSpeed = 50; } 
+            else { typingTextElement.textContent = currentWord.substring(0, charIndex + 1); charIndex++; typeSpeed = 100; }
+            if (!isDeleting && charIndex === currentWord.length) { isDeleting = true; typeSpeed = 2000; } 
+            else if (isDeleting && charIndex === 0) { isDeleting = false; wordIndex = (wordIndex + 1) % typingWords.length; typeSpeed = 500; }
             setTimeout(typeEffect, typeSpeed);
         }
-        document.addEventListener('DOMContentLoaded', typeEffect);
 
-
-        /* --- 4번: 논문 Hover 프리뷰 로직 --- */
-        const tooltip = document.getElementById('preview-tooltip');
-        const previewImg = document.getElementById('preview-img');
-        const triggers = document.querySelectorAll('.hover-trigger');
-
+        const tooltip = document.getElementById('preview-tooltip'); const previewImg = document.getElementById('preview-img'); const triggers = document.querySelectorAll('.hover-trigger');
         triggers.forEach(trigger => {
-            trigger.addEventListener('mouseenter', (e) => {
-                const imgSrc = trigger.getAttribute('data-image');
-                if(imgSrc) {
-                    previewImg.src = imgSrc;
-                    tooltip.style.opacity = '1';
-                    tooltip.style.transform = 'scale(1)';
+            trigger.addEventListener('mouseenter', (e) => { const imgSrc = trigger.getAttribute('data-image'); if(imgSrc) { previewImg.src = imgSrc; tooltip.style.opacity = '1'; tooltip.style.transform = 'scale(1)'; } });
+            trigger.addEventListener('mouseleave', () => { tooltip.style.opacity = '0'; tooltip.style.transform = 'scale(0.8)'; });
+            trigger.addEventListener('mousemove', (e) => { tooltip.style.left = `${e.clientX + 20}px`; tooltip.style.top = `${e.clientY + 20}px`; });
+        });
+
+        mainTitle.addEventListener('click', () => scrollToSection('home'));
+
+        window.addEventListener('scroll', () => {
+            const scrollY = window.scrollY; const winH = window.innerHeight; const winW = window.innerWidth; const docH = document.body.scrollHeight;
+            document.getElementById('progress-bar').style.width = ((scrollY / (docH - winH)) * 100) + "%";
+
+            const sections = document.querySelectorAll('section'); const navLinks = document.querySelectorAll('nav a');
+            sections.forEach(sec => {
+                const top = window.scrollY; const offset = sec.offsetTop - 200; const height = sec.offsetHeight; const id = sec.getAttribute('id');
+                if(top >= offset && top < offset + height) {
+                    navLinks.forEach(link => { link.classList.remove('active'); if(link.getAttribute('onclick') && link.getAttribute('onclick').includes(id)) { link.classList.add('active'); } });
                 }
             });
 
-            trigger.addEventListener('mouseleave', () => {
-                tooltip.style.opacity = '0';
-                tooltip.style.transform = 'scale(0.8)';
-            });
+            if (scrollY > 50) { scrollHint.style.opacity = '0'; scrollHint.style.pointerEvents = 'none'; typingWrapper.style.opacity = '0'; } 
+            else { scrollHint.style.opacity = '1'; scrollHint.style.pointerEvents = 'auto'; typingWrapper.style.opacity = '1'; }
 
-            trigger.addEventListener('mousemove', (e) => {
-                const x = e.clientX + 20;
-                const y = e.clientY + 20;
-                tooltip.style.left = `${x}px`;
-                tooltip.style.top = `${y}px`;
-            });
+            const startY = winH * 0.5; let stopY, minScale;
+            if (winW > 1100) { stopY = 35; minScale = 0.5; } else { stopY = 90; minScale = 0.5; if (winW <= 768) stopY = 100; }
+            let currentTop = Math.max(startY - scrollY, stopY); let currentScale = 1 - ((1 - minScale) * Math.min(Math.max(scrollY / (startY - stopY), 0), 1));
+            mainTitle.style.top = `${currentTop}px`; mainTitle.style.transform = `translate(-50%, -50%) scale(${currentScale})`;
+            mainTitle.style.pointerEvents = currentScale <= minScale + 0.1 ? 'auto' : 'none'; mainTitle.style.cursor = currentScale <= minScale + 0.1 ? 'pointer' : 'default';
         });
 
-        // 클릭 이벤트 등록
-        mainTitle.addEventListener('click', () => {
-            scrollToSection('home');
-        });
-
-        window.addEventListener('scroll', () => {
-            const scrollY = window.scrollY;
-            const winH = window.innerHeight;
-            const winW = window.innerWidth;
-            const docH = document.body.scrollHeight;
-
-            /* --- 3번: 스크롤 진행 바 업데이트 --- */
-            const scrolled = (scrollY / (docH - winH)) * 100;
-            document.getElementById('progress-bar').style.width = scrolled + "%";
-
-            // 힌트 제어
-            if (scrollY > 50) {
-                scrollHint.style.opacity = '0';
-                scrollHint.style.pointerEvents = 'none';
-                typingWrapper.style.opacity = '0'; 
-            } else {
-                scrollHint.style.opacity = '1';
-                scrollHint.style.pointerEvents = 'auto';
-                typingWrapper.style.opacity = '1';
-            }
-
-            const startY = winH * 0.5;
-            let stopY, minScale;
-
-            if (winW > 1100) {
-                stopY = 35; 
-                minScale = 0.5;
-            } else {
-                stopY = 90; 
-                minScale = 0.5;
-                if (winW <= 768) stopY = 100;
-            }
-            
-            let currentTop = startY - scrollY;
-            const totalTravel = startY - stopY;
-            
-            let progress = Math.min(Math.max(scrollY / totalTravel, 0), 1);
-            let currentScale = 1 - ((1 - minScale) * progress);
-
-            if (currentTop < stopY) currentTop = stopY;
-
-            mainTitle.style.top = `${currentTop}px`;
-            mainTitle.style.transform = `translate(-50%, -50%) scale(${currentScale})`;
-
-            if (progress > 0.9) {
-                mainTitle.style.pointerEvents = 'auto';
-                mainTitle.style.cursor = 'pointer';
-            } else {
-                mainTitle.style.pointerEvents = 'none';
-                mainTitle.style.cursor = 'default';
-            }
-        });
-
-        // custom cursor hover 효과
         document.querySelectorAll('a, button, .glass-card, #main-title, #scroll-hint').forEach(el => {
             el.addEventListener('mouseenter', () => document.body.classList.add('hovering'));
             el.addEventListener('mouseleave', () => document.body.classList.remove('hovering'));
         });
 
-        function scrollToSection(id) {
-            const el = document.getElementById(id);
-            if(el) {
-                window.scrollTo({top: el.getBoundingClientRect().top + window.pageYOffset, behavior: 'smooth'});
-            }
-        }
+        function scrollToSection(id) { const el = document.getElementById(id); if(el) window.scrollTo({top: el.getBoundingClientRect().top + window.pageYOffset, behavior: 'smooth'}); }
         
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('visible'); });
-        }, { threshold: 0.2 });
+        const observer = new IntersectionObserver((entries) => { entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('visible'); }); }, { threshold: 0.2 });
         document.querySelectorAll('.glass-card').forEach(card => observer.observe(card));
 
-        // ==========================================
-        // 음악 분석 및 재생 제어 (랜덤 플레이리스트 로직 추가)
-        // ==========================================
-        
-        // ★ 플레이리스트 작성 (원하는 파일을 자유롭게 추가하세요!)
-        const bgmList = [
-            './bgm_0.mp3',
-            // './bgm_1.mp3',
-            // './bgm_2.mp3',
-        ];
+        const bgmList = ['./bgm_0.mp3']; const bgMusic = document.getElementById('bg-music'); const musicToggleBtn = document.getElementById('music-toggle'); const musicIcon = musicToggleBtn.querySelector('i');
+        let isMusicPlaying = false; let audioCtx, analyser, dataArray; let isAudioInitialized = false; let musicBeatValue = 0; bgMusic.volume = 0.5; 
 
-        const bgMusic = document.getElementById('bg-music');
-        const musicToggleBtn = document.getElementById('music-toggle');
-        const musicIcon = musicToggleBtn.querySelector('i');
-        let isMusicPlaying = false;
+        function changeToRandomTrack() { bgMusic.src = bgmList[Math.floor(Math.random() * bgmList.length)]; bgMusic.load(); } changeToRandomTrack();
+        bgMusic.addEventListener('loadedmetadata', () => { if (bgMusic.duration) bgMusic.currentTime = Math.random() * bgMusic.duration; if (isMusicPlaying) bgMusic.play().catch(console.error); });
+        bgMusic.addEventListener('ended', changeToRandomTrack);
 
-        // Web Audio API 관련 변수
-        let audioCtx, analyser, dataArray;
-        let isAudioInitialized = false;
-        let musicBeatValue = 0; // 비트에 반응하는 수치 (0.0 ~ 1.0)
-
-        bgMusic.volume = 0.5; 
-
-        // 랜덤하게 다음 곡을 골라 세팅하는 함수
-        function changeToRandomTrack() {
-            const randomIndex = Math.floor(Math.random() * bgmList.length);
-            bgMusic.src = bgmList[randomIndex];
-            bgMusic.load(); // 새로운 소스를 로드합니다 (이후 loadedmetadata 이벤트 발생)
-        }
-
-        // 페이지 진입 시 최초 곡 하나 세팅
-        changeToRandomTrack();
-
-        // 메타데이터(곡 길이 등) 로딩 완료 시 랜덤 시작 위치 지정
-        bgMusic.addEventListener('loadedmetadata', () => {
-            if (bgMusic.duration) {
-                bgMusic.currentTime = Math.random() * bgMusic.duration;
-            }
-            // 곡이 자연스럽게 변경된 상황(이미 재생중이었음)이면 바로 다시 재생시작
-            if (isMusicPlaying) {
-                bgMusic.play().catch(console.error);
-            }
-        });
-
-        // 한 곡 재생이 끝나면 다른 랜덤 곡으로 변경
-        bgMusic.addEventListener('ended', () => {
-            changeToRandomTrack();
-        });
-
-        // 사용자가 처음 버튼을 누를 때 AudioContext를 초기화합니다.
         function initAudio() {
             if (!isAudioInitialized) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                analyser = audioCtx.createAnalyser();
-                
-                const source = audioCtx.createMediaElementSource(bgMusic);
-                source.connect(analyser);
-                analyser.connect(audioCtx.destination);
-                
-                analyser.fftSize = 256; 
-                const bufferLength = analyser.frequencyBinCount;
-                dataArray = new Uint8Array(bufferLength);
-                
-                isAudioInitialized = true;
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)(); analyser = audioCtx.createAnalyser();
+                const source = audioCtx.createMediaElementSource(bgMusic); source.connect(analyser); analyser.connect(audioCtx.destination);
+                analyser.fftSize = 256; dataArray = new Uint8Array(analyser.frequencyBinCount); isAudioInitialized = true;
             }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
         }
 
         musicToggleBtn.addEventListener('click', () => {
-            initAudio(); // 오디오 분석기 초기화
-
-            if (isMusicPlaying) {
-                bgMusic.pause();
-                musicIcon.classList.remove('fa-volume-high');
-                musicIcon.classList.add('fa-volume-xmark');
-            } else {
-                bgMusic.play().catch(console.error);
-                musicIcon.classList.remove('fa-volume-xmark');
-                musicIcon.classList.add('fa-volume-high');
-            }
+            initAudio(); 
+            if (isMusicPlaying) { bgMusic.pause(); musicIcon.classList.replace('fa-volume-high', 'fa-volume-xmark'); } 
+            else { bgMusic.play().catch(console.error); musicIcon.classList.replace('fa-volume-xmark', 'fa-volume-high'); }
             isMusicPlaying = !isMusicPlaying;
         });
 
-        // ==========================================
-        // Three.js 로직 (마우스 + 둠칫둠칫 모션)
-        // ==========================================
-        const REPEL_RADIUS = 8.0;     
-        const REPEL_STRENGTH = 3.5;   
-        const BEAT_STRENGTH = 0.4;    // ★ 둠칫둠칫 강도 조절
-
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.getElementById('canvas-container').appendChild(renderer.domElement);
-        camera.position.z = 40;
+        const REPEL_RADIUS = 8.0, REPEL_STRENGTH = 3.5, BEAT_STRENGTH = 0.4;    
+        const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight); document.getElementById('canvas-container').appendChild(renderer.domElement); camera.position.z = 40;
 
         function createCircleTexture() {
-            const canvas = document.createElement('canvas'); canvas.width = 32; canvas.height = 32;
-            const ctx = canvas.getContext('2d');
-            const grad = ctx.createRadialGradient(16,16,0, 16,16,16);
-            grad.addColorStop(0, 'white'); grad.addColorStop(1, 'transparent');
-            ctx.fillStyle = grad; ctx.fillRect(0, 0, 32, 32);
-            return new THREE.CanvasTexture(canvas);
+            const canvas = document.createElement('canvas'); canvas.width = 32; canvas.height = 32; const ctx = canvas.getContext('2d');
+            const grad = ctx.createRadialGradient(16,16,0, 16,16,16); grad.addColorStop(0, 'white'); grad.addColorStop(1, 'transparent'); ctx.fillStyle = grad; ctx.fillRect(0, 0, 32, 32); return new THREE.CanvasTexture(canvas);
         }
 
-        const particleCount = 12000;
-        const geometry = new THREE.BufferGeometry();
-        const currentPositions = new Float32Array(particleCount * 3);
-        const initialPositions = new Float32Array(particleCount * 3);
-        const targetPositions = new Float32Array(particleCount * 3);
-        const introPositions = new Float32Array(particleCount * 3);
-        const mouseOffsets = new Float32Array(particleCount * 3); 
+        const particleCount = 12000; const geometry = new THREE.BufferGeometry();
+        const currentPositions = new Float32Array(particleCount * 3), initialPositions = new Float32Array(particleCount * 3), targetPositions = new Float32Array(particleCount * 3), introPositions = new Float32Array(particleCount * 3), mouseOffsets = new Float32Array(particleCount * 3); 
 
         for (let i = 0; i < particleCount; i++) {
-            const u = Math.random(), v = Math.random();
-            const theta = 2 * Math.PI * u, phi = Math.acos(2 * v - 1);
-            const r = 12 + Math.random() * 0.5;
-            initialPositions[i*3] = r * Math.sin(phi) * Math.cos(theta);
-            initialPositions[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
-            initialPositions[i*3+2] = r * Math.cos(phi);
-            targetPositions[i*3] = (Math.random()-0.5)*300; 
-            targetPositions[i*3+1] = (Math.random()-0.5)*300;
-            targetPositions[i*3+2] = (Math.random()-0.5)*200;
-            introPositions[i*3] = (Math.random()-0.5)*800; 
-            introPositions[i*3+1] = (Math.random()-0.5)*800;
-            introPositions[i*3+2] = (Math.random()-0.5)*800;
-            mouseOffsets[i*3] = 0;
-            mouseOffsets[i*3+1] = 0;
-            mouseOffsets[i*3+2] = 0;
+            const u = Math.random(), v = Math.random(); const theta = 2 * Math.PI * u, phi = Math.acos(2 * v - 1); const r = 12 + Math.random() * 0.5;
+            initialPositions[i*3] = r * Math.sin(phi) * Math.cos(theta); initialPositions[i*3+1] = r * Math.sin(phi) * Math.sin(theta); initialPositions[i*3+2] = r * Math.cos(phi);
+            targetPositions[i*3] = (Math.random()-0.5)*300; targetPositions[i*3+1] = (Math.random()-0.5)*300; targetPositions[i*3+2] = (Math.random()-0.5)*200;
+            introPositions[i*3] = (Math.random()-0.5)*800; introPositions[i*3+1] = (Math.random()-0.5)*800; introPositions[i*3+2] = (Math.random()-0.5)*800;
+            mouseOffsets[i*3] = mouseOffsets[i*3+1] = mouseOffsets[i*3+2] = 0;
         }
 
         geometry.setAttribute('position', new THREE.BufferAttribute(currentPositions, 3));
-        const particles = new THREE.Points(geometry, new THREE.PointsMaterial({
-            color: 0x99c2ff, size: 0.4, map: createCircleTexture(), transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false
-        }));
-        scene.add(particles);
+        const particles = new THREE.Points(geometry, new THREE.PointsMaterial({ color: 0x99c2ff, size: 0.4, map: createCircleTexture(), transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })); scene.add(particles);
 
-        const mouse2D = new THREE.Vector2(-1000, -1000);
-        const mouse3D = new THREE.Vector3();
-        const raycaster = new THREE.Raycaster();
-        const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0); 
-
+        const mouse2D = new THREE.Vector2(-1000, -1000), mouse3D = new THREE.Vector3(), raycaster = new THREE.Raycaster(), plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0); 
         window.addEventListener('mousemove', (e) => {
-            mouseX = e.clientX; mouseY = e.clientY;
-            
-            mouse2D.x = (e.clientX / window.innerWidth) * 2 - 1;
-            mouse2D.y = -(e.clientY / window.innerHeight) * 2 + 1;
-
-            cursorDot.style.left = `${mouseX}px`;
-            cursorDot.style.top = `${mouseY}px`;
-            
-            if (isBackgroundDrag) {
-                targetRotationX += e.movementX * 0.002;
-                targetRotationY += e.movementY * 0.002;
-            }
+            mouseX = e.clientX; mouseY = e.clientY; mouse2D.x = (e.clientX / window.innerWidth) * 2 - 1; mouse2D.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            cursorDot.style.left = `${mouseX}px`; cursorDot.style.top = `${mouseY}px`;
+            if (isBackgroundDrag) { targetRotationX += e.movementX * 0.002; targetRotationY += e.movementY * 0.002; }
         });
-
-        window.addEventListener('mousedown', (e) => {
-            const isInsideCard = e.target.closest('.glass-card');
-            const isInteractive = e.target.closest('a') || e.target.closest('button') || e.target.id === 'main-title' || e.target.id === 'scroll-hint';
-            if (!isInsideCard && !isInteractive) isBackgroundDrag = true;
-            isMouseDown = true;
-            document.body.classList.add('clicking');
-        });
-
-        window.addEventListener('mouseup', () => {
-            isMouseDown = false;
-            isBackgroundDrag = false;
-            document.body.classList.remove('clicking');
-        });
+        window.addEventListener('mousedown', (e) => { if (!e.target.closest('.glass-card') && !e.target.closest('a') && !e.target.closest('button') && e.target.id !== 'main-title' && e.target.id !== 'scroll-hint') isBackgroundDrag = true; isMouseDown = true; document.body.classList.add('clicking'); });
+        window.addEventListener('mouseup', () => { isMouseDown = false; isBackgroundDrag = false; document.body.classList.remove('clicking'); });
 
         let startTime = null;
         function animate(timestamp) {
             requestAnimationFrame(animate);
-            if (!startTime) startTime = timestamp;
-            const elapsed = timestamp - startTime;
-            let introProgress = Math.min(elapsed / 1200, 1);
-            const scrollStrength = Math.min(Math.max(window.scrollY / (document.body.scrollHeight - window.innerHeight), 0), 1);
+            if (!startTime) startTime = timestamp; const elapsed = timestamp - startTime;
+            let introProgress = Math.min(elapsed / 1200, 1); const scrollStrength = Math.min(Math.max(window.scrollY / (document.body.scrollHeight - window.innerHeight), 0), 1);
             
-            // --- 🎵 오디오 주파수 분석 (둠칫둠칫) ---
             if (isAudioInitialized && isMusicPlaying) {
-                analyser.getByteFrequencyData(dataArray);
-                
-                let bassSum = 0;
-                const bassBins = 10;
-                for (let i = 0; i < bassBins; i++) {
-                    bassSum += dataArray[i];
-                }
-                const avgBass = bassSum / bassBins;
-                
-                const targetBeatValue = avgBass / 255.0;
-                musicBeatValue += (targetBeatValue - musicBeatValue) * 0.1; 
-                
-                // ★ 4번 효과 추가: 배경색 및 UI 네온 글로우
-                const bgIntensity = Math.floor(musicBeatValue * 12);
-                document.body.style.backgroundColor = `rgb(${8 + bgIntensity}, ${8 + bgIntensity}, ${10 + bgIntensity})`;
-                
-                document.querySelectorAll('.glass-card').forEach(card => {
-                    card.style.boxShadow = `0 8px 32px 0 rgba(153, 194, 255, ${0.3 + musicBeatValue * 0.5})`;
-                });
-                
+                analyser.getByteFrequencyData(dataArray); let bassSum = 0; for (let i = 0; i < 10; i++) bassSum += dataArray[i];
+                musicBeatValue += ((bassSum / 10 / 255.0) - musicBeatValue) * 0.1; 
+                const bgIntensity = Math.floor(musicBeatValue * 12); document.body.style.backgroundColor = `rgb(${8 + bgIntensity}, ${8 + bgIntensity}, ${10 + bgIntensity})`;
+                document.querySelectorAll('.glass-card').forEach(card => { card.style.boxShadow = `0 8px 32px 0 rgba(153, 194, 255, ${0.3 + musicBeatValue * 0.5})`; });
             } else {
-                musicBeatValue += (0 - musicBeatValue) * 0.1;
-                
-                // ★ 원래 상태로 복귀
-                document.body.style.backgroundColor = '#08080a';
-                document.querySelectorAll('.glass-card').forEach(card => {
-                    card.style.boxShadow = `0 8px 32px 0 rgba(0, 0, 0, 0.3)`;
-                });
+                musicBeatValue += (0 - musicBeatValue) * 0.1; document.body.style.backgroundColor = '#08080a';
+                document.querySelectorAll('.glass-card').forEach(card => card.style.boxShadow = `0 8px 32px 0 rgba(0, 0, 0, 0.3)`);
             }
             
             let beatScale = 1.0 + (musicBeatValue * BEAT_STRENGTH);
+            currentRotationX += (targetRotationX - currentRotationX) * 0.05; currentRotationY += (targetRotationY - currentRotationY) * 0.05;
+            particles.rotation.y = currentRotationX + (timestamp * 0.0001); particles.rotation.x = currentRotationY; particles.updateMatrixWorld();
 
-            // 회전 업데이트
-            currentRotationX += (targetRotationX - currentRotationX) * 0.05;
-            currentRotationY += (targetRotationY - currentRotationY) * 0.05;
-            particles.rotation.y = currentRotationX + (timestamp * 0.0001);
-            particles.rotation.x = currentRotationY;
-            particles.updateMatrixWorld();
-
-            raycaster.setFromCamera(mouse2D, camera);
-            raycaster.ray.intersectPlane(plane, mouse3D);
-            const localMouse = mouse3D.clone();
-            particles.worldToLocal(localMouse);
-
+            raycaster.setFromCamera(mouse2D, camera); raycaster.ray.intersectPlane(plane, mouse3D);
+            const localMouse = mouse3D.clone(); particles.worldToLocal(localMouse);
             const pos = particles.geometry.attributes.position.array;
+
             for (let i = 0; i < particleCount; i++) {
-                const ix = i*3, iy = i*3+1, iz = i*3+2;
-                let baseX, baseY, baseZ;
-
+                const ix = i*3, iy = i*3+1, iz = i*3+2; let baseX, baseY, baseZ;
                 if (introProgress < 1) {
-                    baseX = introPositions[ix] + (initialPositions[ix]-introPositions[ix])*(1-Math.pow(1-introProgress,3));
-                    baseY = introPositions[iy] + (initialPositions[iy]-introPositions[iy])*(1-Math.pow(1-introProgress,3));
-                    baseZ = introPositions[iz] + (initialPositions[iz]-introPositions[iz])*(1-Math.pow(1-introProgress,3));
+                    baseX = introPositions[ix] + (initialPositions[ix]-introPositions[ix])*(1-Math.pow(1-introProgress,3)); baseY = introPositions[iy] + (initialPositions[iy]-introPositions[iy])*(1-Math.pow(1-introProgress,3)); baseZ = introPositions[iz] + (initialPositions[iz]-introPositions[iz])*(1-Math.pow(1-introProgress,3));
                 } else {
-                    baseX = initialPositions[ix] + (targetPositions[ix]-initialPositions[ix])*scrollStrength;
-                    baseY = initialPositions[iy] + (targetPositions[iy]-initialPositions[iy])*scrollStrength;
-                    baseZ = initialPositions[iz] + (targetPositions[iz]-initialPositions[iz])*scrollStrength;
+                    baseX = initialPositions[ix] + (targetPositions[ix]-initialPositions[ix])*scrollStrength; baseY = initialPositions[iy] + (targetPositions[iy]-initialPositions[iy])*scrollStrength; baseZ = initialPositions[iz] + (targetPositions[iz]-initialPositions[iz])*scrollStrength;
                 }
-
-                // ★ 비트 스케일 적용
-                baseX *= beatScale;
-                baseY *= beatScale;
-                baseZ *= beatScale;
-
-                // 마우스 인터랙션 계산
-                let dx = baseX - localMouse.x;
-                let dy = baseY - localMouse.y;
-                let dz = baseZ - localMouse.z;
-                let distSq = dx*dx + dy*dy + dz*dz;
-                
-                let targetOffsetX = 0, targetOffsetY = 0, targetOffsetZ = 0;
-
+                baseX *= beatScale; baseY *= beatScale; baseZ *= beatScale;
+                let dx = baseX - localMouse.x; let dy = baseY - localMouse.y; let dz = baseZ - localMouse.z; let distSq = dx*dx + dy*dy + dz*dz; let targetOffsetX = 0, targetOffsetY = 0, targetOffsetZ = 0;
                 if (distSq < REPEL_RADIUS * REPEL_RADIUS && distSq > 0) {
-                    let dist = Math.sqrt(distSq);
-                    let force = Math.pow((REPEL_RADIUS - dist) / REPEL_RADIUS, 2) * REPEL_STRENGTH;
-                    targetOffsetX = (dx / dist) * force;
-                    targetOffsetY = (dy / dist) * force;
-                    targetOffsetZ = (dz / dist) * force;
+                    let dist = Math.sqrt(distSq); let force = Math.pow((REPEL_RADIUS - dist) / REPEL_RADIUS, 2) * REPEL_STRENGTH;
+                    targetOffsetX = (dx / dist) * force; targetOffsetY = (dy / dist) * force; targetOffsetZ = (dz / dist) * force;
                 }
-
-                mouseOffsets[ix] += (targetOffsetX - mouseOffsets[ix]) * 0.1;
-                mouseOffsets[iy] += (targetOffsetY - mouseOffsets[iy]) * 0.1;
-                mouseOffsets[iz] += (targetOffsetZ - mouseOffsets[iz]) * 0.1;
-
-                pos[ix] = baseX + mouseOffsets[ix];
-                pos[iy] = baseY + mouseOffsets[iy];
-                pos[iz] = baseZ + mouseOffsets[iz];
+                mouseOffsets[ix] += (targetOffsetX - mouseOffsets[ix]) * 0.1; mouseOffsets[iy] += (targetOffsetY - mouseOffsets[iy]) * 0.1; mouseOffsets[iz] += (targetOffsetZ - mouseOffsets[iz]) * 0.1;
+                pos[ix] = baseX + mouseOffsets[ix]; pos[iy] = baseY + mouseOffsets[iy]; pos[iz] = baseZ + mouseOffsets[iz];
             }
             
-            particles.geometry.attributes.position.needsUpdate = true;
-            
-            outlineX += (mouseX - outlineX) * 0.15; outlineY += (mouseY - outlineY) * 0.15;
-            cursorOutline.style.left = `${outlineX}px`; cursorOutline.style.top = `${outlineY}px`;
-            
-            renderer.render(scene, camera);
+            particles.geometry.attributes.position.needsUpdate = true; outlineX += (mouseX - outlineX) * 0.15; outlineY += (mouseY - outlineY) * 0.15;
+            cursorOutline.style.left = `${outlineX}px`; cursorOutline.style.top = `${outlineY}px`; renderer.render(scene, camera);
         }
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
         
         animate();
     </script>
