@@ -154,6 +154,38 @@
         .profile-img:hover { transform: scale(1.05); box-shadow: 0 0 30px rgba(153, 194, 255, 0.4); }
         .contact-info { flex: 1; }
 
+        /* --- 추가된 Rock Star 모토 스타일 --- */
+        .rockstar-motto {
+            display: inline-block;
+            margin-top: 15px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #ffffff;
+            text-shadow: 0 0 8px rgba(153, 194, 255, 0.6);
+            font-style: italic;
+            letter-spacing: 1px;
+            padding: 10px 20px;
+            border-radius: 12px;
+            background: rgba(153, 194, 255, 0.05);
+            border: 1px solid rgba(153, 194, 255, 0.2);
+            transition: all 0.3s ease;
+            cursor: none; /* 전체 커서 설정 유지 */
+        }
+        
+        .rockstar-motto:hover {
+            transform: translateY(-3px) scale(1.02);
+            border-color: #99c2ff;
+            background: rgba(153, 194, 255, 0.1);
+            text-shadow: 0 0 15px rgba(153, 194, 255, 1);
+            box-shadow: 0 5px 20px rgba(153, 194, 255, 0.2);
+        }
+        
+        .rockstar-motto i {
+            color: #99c2ff;
+            margin-right: 8px;
+            filter: drop-shadow(0 0 5px rgba(153, 194, 255, 0.8));
+        }
+
         #music-toggle {
             position: fixed; bottom: 30px; right: 30px; width: 50px; height: 50px; border-radius: 50%;
             background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(153, 194, 255, 0.2);
@@ -266,6 +298,9 @@
                 <img src="./img/my_photo.png" alt="Daewon Choi" class="profile-img">
                 <div class="contact-info">
                     <p><strong style="color: #e0e0e0;">Email:</strong> <a href="mailto:cbigo@hanyang.ac.kr" class="pub-link">cbigo@hanyang.ac.kr</a></p>
+                    
+                    <p class="rockstar-motto">"I will be a rock star"</p>
+                    
                 </div>
             </div>
         </div>
@@ -351,7 +386,7 @@
             mainTitle.style.pointerEvents = currentScale <= minScale + 0.1 ? 'auto' : 'none'; mainTitle.style.cursor = currentScale <= minScale + 0.1 ? 'pointer' : 'default';
         });
 
-        document.querySelectorAll('a, button, .glass-card, #main-title, #scroll-hint').forEach(el => {
+        document.querySelectorAll('a, button, .glass-card, #main-title, #scroll-hint, .rockstar-motto').forEach(el => {
             el.addEventListener('mouseenter', () => document.body.classList.add('hovering'));
             el.addEventListener('mouseleave', () => document.body.classList.remove('hovering'));
         });
