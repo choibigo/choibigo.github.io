@@ -79,8 +79,6 @@
         nav a:hover { color: #ffffff; }
         nav a.active { 
             color: #ffffff; 
-            /* font-weight: bold; 삭제 - 이 부분이 꿀렁임의 주범입니다. */
-            /* 대신 발광(text-shadow)을 더 선명하게 주어 굵어진 것 같은 착시를 줍니다. */
             text-shadow: 0 0 15px rgba(153, 194, 255, 0.9), 0 0 5px rgba(255, 255, 255, 0.6); 
         }
 
@@ -154,36 +152,51 @@
         .profile-img:hover { transform: scale(1.05); box-shadow: 0 0 30px rgba(153, 194, 255, 0.4); }
         .contact-info { flex: 1; }
 
-        /* --- 추가된 Rock Star 모토 스타일 --- */
-        .rockstar-motto {
+        /* --- [수정] 프로필 사진 래퍼 및 Rock Star 모토 툴팁 효과 --- */
+        .profile-wrapper {
+            position: relative;
             display: inline-block;
-            margin-top: 15px;
-            font-size: 1.2rem;
+        }
+
+        .rockstar-motto {
+            position: absolute;
+            bottom: -15px; /* 사진 하단에 살짝 걸치도록 위치 */
+            left: 50%;
+            
+            /* 중앙 정렬 + 애니메이션 시작점 세팅 (위로 살짝 올라가고 작아진 상태) */
+            transform: translateX(-50%) translateY(-15px) scale(0.9);
+            opacity: 0;
+            visibility: hidden;
+            white-space: nowrap; /* 글씨 줄바꿈 방지 */
+            
+            font-size: 1.1rem;
             font-weight: 700;
             color: #ffffff;
             text-shadow: 0 0 8px rgba(153, 194, 255, 0.6);
             font-style: italic;
             letter-spacing: 1px;
-            padding: 10px 20px;
+            padding: 8px 18px;
             border-radius: 12px;
-            background: rgba(153, 194, 255, 0.05);
-            border: 1px solid rgba(153, 194, 255, 0.2);
-            transition: all 0.3s ease;
-            cursor: none; /* 전체 커서 설정 유지 */
+            
+            /* 가독성을 위해 살짝 어두운 반투명 배경 적용 */
+            background: rgba(15, 15, 20, 0.85); 
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(153, 194, 255, 0.4);
+            
+            /* 통통 튀는 등장 애니메이션 */
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            cursor: none; 
+            z-index: 20;
         }
-        
-        .rockstar-motto:hover {
-            transform: translateY(-3px) scale(1.02);
+
+        /* 💡 사진(래퍼)에 마우스를 올렸을 때의 변화 */
+        .profile-wrapper:hover .rockstar-motto {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0) scale(1); /* 원래 위치와 크기로 복귀 */
+            box-shadow: 0 5px 20px rgba(153, 194, 255, 0.3);
             border-color: #99c2ff;
-            background: rgba(153, 194, 255, 0.1);
             text-shadow: 0 0 15px rgba(153, 194, 255, 1);
-            box-shadow: 0 5px 20px rgba(153, 194, 255, 0.2);
-        }
-        
-        .rockstar-motto i {
-            color: #99c2ff;
-            margin-right: 8px;
-            filter: drop-shadow(0 0 5px rgba(153, 194, 255, 0.8));
         }
 
         #music-toggle {
@@ -295,12 +308,12 @@
         <div class="glass-card">
             <h2>Contact</h2>
             <div class="contact-content">
-                <img src="./img/my_photo.png" alt="Daewon Choi" class="profile-img">
+                <div class="profile-wrapper">
+                    <img src="./img/my_photo.png" alt="Daewon Choi" class="profile-img">
+                    <p class="rockstar-motto">"I will be a rock star"</p>
+                </div>
                 <div class="contact-info">
                     <p><strong style="color: #e0e0e0;">Email:</strong> <a href="mailto:cbigo@hanyang.ac.kr" class="pub-link">cbigo@hanyang.ac.kr</a></p>
-                    
-                    <p class="rockstar-motto">"I will be a rock star"</p>
-                    
                 </div>
             </div>
         </div>
