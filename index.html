@@ -91,7 +91,7 @@
             position: fixed; top: 0; left: 0; width: 40px; height: 40px;
             border: 1px solid rgba(255, 255, 255, 0.5); border-radius: 50%;
             transform: translate(-50%, -50%); z-index: 9999; pointer-events: none;
-            transition: width 0.3s, height 0.3s, background 0.3s, border-color 0.3s;
+            transition: width 0.15s ease-out, height 0.15s ease-out, background 0.15s ease-out, border-color 0.15s ease-out;
             mix-blend-mode: difference;
         }
         body.hovering .cursor-ring {
@@ -121,13 +121,13 @@
         .nav-links { display: flex; gap: clamp(15px, 3vw, 40px); }
         .nav-links a {
             font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
-            position: relative; overflow: hidden; display: inline-block;
+            position: relative; display: inline-block;
         }
         .nav-links a::after {
-            content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 1px;
-            background: var(--text-main); transform: translateX(-100%); transition: transform 0.3s ease;
+            content: ''; position: absolute; bottom: -4px; left: 0; width: 100%; height: 1px;
+            background: var(--text-main); transform: scaleX(0); transform-origin: right; transition: transform 0.3s ease;
         }
-        .nav-links a:hover::after, .nav-links a.active::after { transform: translateX(0); }
+        .nav-links a:hover::after, .nav-links a.active::after { transform: scaleX(1); transform-origin: left; }
 
         /* --- Layout & Sections --- */
         section {
@@ -174,12 +174,20 @@
         /* --- About --- */
         .about-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 5vw; align-items: start; }
         .about-text p {
-            font-size: clamp(1.1rem, 2vw, 1.5rem); line-height: 1.8; color: var(--text-muted); font-weight: 300;
+            font-size: clamp(1.1rem, 2vw, 1.5rem); 
+            line-height: 1.8; 
+            color: #e0e0e0;
+            font-weight: 400; 
             margin-bottom: 30px;
         }
         .about-text strong { color: var(--text-main); font-weight: 600; }
+        
         .cool-link {
-            position: relative; color: var(--text-main); text-decoration: none; display: inline-block;
+            position: relative; 
+            color: var(--accent-2); 
+            font-weight: 600;
+            text-decoration: none; 
+            display: inline-block;
         }
         .cool-link::before {
             content: ''; position: absolute; bottom: 2px; left: 0; width: 100%; height: 2px;
@@ -202,43 +210,53 @@
         .research-item {
             padding: 40px 0; border-bottom: 1px solid rgba(255,255,255,0.1);
             display: grid; grid-template-columns: 1fr 2fr; align-items: center; gap: 20px;
-            transition: padding 0.3s ease;
+            transition: background 0.15s ease-out;
         }
-        .research-item:hover { padding-left: 20px; background: linear-gradient(90deg, rgba(255,255,255,0.03) 0%, transparent 100%); }
+        .research-item:hover { background: linear-gradient(90deg, rgba(255,255,255,0.03) 0%, transparent 100%); }
         .r-title { 
             font-family: 'Syne', sans-serif; 
             font-size: clamp(1.8rem, 3vw, 2.5rem); 
             font-weight: 700; color: var(--text-main); 
-            line-height: 1.4; /* g, y 등 글자 잘림 방지 (충분한 높이 확보) */
-            padding-bottom: 10px; /* 안전 여백 추가 */
+            line-height: 1.4; 
+            display: block; 
+            padding-bottom: 0.3em; 
             overflow: visible;
         }
-        .r-desc { font-size: clamp(1rem, 1.5vw, 1.2rem); color: var(--text-muted); }
+        .r-desc { 
+            font-size: clamp(1rem, 1.5vw, 1.2rem); color: var(--text-muted); line-height: 1.6; 
+            display: block; padding-bottom: 0.3em; 
+        }
 
         /* --- Publication (Artistic Hover Reveal) --- */
         .pub-list { display: flex; flex-direction: column; }
         .pub-item {
             position: relative; padding: 50px 0; border-bottom: 1px solid rgba(255,255,255,0.1);
             display: flex; flex-direction: column; text-decoration: none; mix-blend-mode: difference;
+            overflow: visible;
         }
         .pub-title {
             font-family: 'Syne', sans-serif; font-size: clamp(2rem, 3.5vw, 3.5rem); font-weight: 700; 
-            line-height: 1.25; /* 여기도 잘림 방지 */
-            padding-bottom: 5px;
-            transition: transform 0.4s cubic-bezier(0.1, 0.8, 0.2, 1), color 0.3s;
+            line-height: 1.4; 
+            display: block; 
+            padding-bottom: 0.3em; 
+            transition: color 0.2s; 
+            overflow: visible;
         }
         .pub-subtitle {
             font-family: 'Manrope', sans-serif; font-size: clamp(1rem, 1.8vw, 1.2rem); font-weight: 300;
-            color: var(--text-muted); margin-top: 5px; line-height: 1.4;
-            transition: transform 0.4s cubic-bezier(0.1, 0.8, 0.2, 1) 0.05s, color 0.3s;
+            color: var(--text-muted); line-height: 1.6; 
+            display: block;
+            padding-bottom: 0.3em;
+            transition: color 0.2s;
+            overflow: visible;
         }
         .pub-meta {
-            font-family: 'JetBrains Mono', monospace; font-size: clamp(0.7rem, 1.2vw, 0.85rem); margin-top: 15px;
+            font-family: 'JetBrains Mono', monospace; font-size: clamp(0.7rem, 1.2vw, 0.85rem); margin-top: 5px;
             color: var(--accent-2); text-transform: uppercase; letter-spacing: 1px;
         }
         
-        .pub-item:hover .pub-title { transform: translateX(30px); color: var(--text-main); }
-        .pub-item:hover .pub-subtitle { transform: translateX(30px); color: #ffffff; }
+        .pub-item:hover .pub-title { color: var(--accent-2); }
+        .pub-item:hover .pub-subtitle { color: #ffffff; }
         
         /* Floating Image Preview */
         #hover-img {
@@ -246,7 +264,7 @@
             width: clamp(300px, 30vw, 1000px);
             object-fit: cover; pointer-events: none; opacity: 0; z-index: 5;
             transform: translate(20px, -50%) scale(0.8) rotate(-3deg);
-            transition: opacity 0.4s ease, transform 0.8s cubic-bezier(0.2, 1, 0.2, 1);
+            transition: opacity 0.3s ease, transform 0.6s cubic-bezier(0.2, 1, 0.2, 1);
             border-radius: 8px; box-shadow: 0 30px 60px rgba(0,0,0,0.6);
             filter: grayscale(30%) contrast(1.1);
         }
@@ -270,24 +288,36 @@
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             animation: spin 15s linear infinite; pointer-events: none;
         }
-        .spinning-text svg { width: 100%; height: 100%; }
-        .spinning-text text { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: bold; fill: var(--text-muted); letter-spacing: 3px; text-transform: uppercase; }
+        .spinning-text svg { width: 100%; height: 100%; overflow: visible; }
+        
+        .spinning-text text { 
+            font-family: 'JetBrains Mono', monospace; 
+            font-size: 15px; /* 폰트 크기를 키워서 원을 자연스럽게 채우도록 설정 */
+            font-weight: bold; 
+            fill: var(--text-muted); 
+            text-transform: uppercase; 
+        }
         .profile-container:hover .spinning-text text { fill: var(--text-main); }
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
         .email-link {
             font-family: 'Syne', sans-serif; font-size: clamp(2rem, 5vw, 4rem); font-weight: 800; margin-top: 40px;
             color: transparent; -webkit-text-stroke: 1px var(--text-main);
-            transition: all 0.3s ease; position: relative;
+            /* transition 속성을 아예 제거하여 호버 시 딜레이 없이 0초만에 반응하도록 변경 */
+            transition: none; 
+            position: relative;
         }
-        .email-link:hover { color: var(--text-main); -webkit-text-stroke: 0px; text-shadow: 0 0 20px var(--accent-1); }
+        .email-link:hover { 
+            color: var(--text-main); 
+            text-shadow: 0 0 20px var(--accent-1); 
+        }
 
         /* --- Music Controller --- */
         .music-ctrl {
             position: fixed; bottom: 40px; left: 40px; width: 60px; height: 60px; 
             border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2);
             backdrop-filter: blur(10px); display: flex; justify-content: center; align-items: center;
-            z-index: 100; font-size: 1.2rem; transition: all 0.3s ease;
+            z-index: 100; font-size: 1.2rem; transition: all 0.2s ease-out;
         }
         .music-ctrl:hover { background: var(--text-main); color: var(--bg-color); transform: scale(1.1); }
         .music-ctrl.playing { box-shadow: 0 0 20px var(--accent-1); border-color: var(--accent-1); }
@@ -378,15 +408,15 @@
     <section id="research">
         <h2 class="section-title reveal-left">Research Focus</h2>
         <div class="research-list">
-            <div class="research-item reveal-left" style="transition-delay: 0.2s;">
+            <div class="research-item hover-target reveal-left" style="transition-delay: 0.2s;">
                 <div class="r-title">Scene<br>Understanding</div>
                 <div class="r-desc">Semantic interpretation of surroundings for intelligent navigation and interaction.</div>
             </div>
-            <div class="research-item reveal-right" style="transition-delay: 0.4s;">
+            <div class="research-item hover-target reveal-right" style="transition-delay: 0.4s;">
                 <div class="r-title">Bimanual<br>Manipulation</div>
                 <div class="r-desc">Advanced control strategies and learning for dual-arm robotic systems.</div>
             </div>
-            <div class="research-item reveal-left" style="transition-delay: 0.6s;">
+            <div class="research-item hover-target reveal-left" style="transition-delay: 0.6s;">
                 <div class="r-title">Task<br>Planning</div>
                 <div class="r-desc">Decomposing high-level human instructions into actionable robotic sequences.</div>
             </div>
@@ -426,10 +456,11 @@
                 <img src="./img/my_photo.png" alt="Daewon Choi" class="profile-img">
                 <div class="spinning-text">
                     <svg viewBox="0 0 100 100">
-                        <path id="circlePath" fill="none" d="M 50, 50 m -40, 0 a 40,40 0 1,1 80,0 a 40,40 0 1,1 -80,0" />
+                        <path id="circlePath" fill="none" d="M 50, 50 m -42, 0 a 42,42 0 1,1 84,0 a 42,42 0 1,1 -84,0" />
+                        <!-- 단일 문장으로 변경하고, textLength를 255로 설정하여 FROM과 TOP 사이에 자연스러운 여백 확보 -->
                         <text>
-                            <textPath href="#circlePath" startOffset="0%">
-                                • FROM THE BOTTOM TO THE TOP • FROM THE BOTTOM TO THE TOP
+                            <textPath href="#circlePath" startOffset="0%" textLength="255" lengthAdjust="spacing">
+                                FROM THE BOTTOM TO THE TOP
                             </textPath>
                         </text>
                     </svg>
