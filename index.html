@@ -258,6 +258,26 @@
             font-family: 'JetBrains Mono', monospace; font-size: clamp(0.7rem, 1.2vw, 0.85rem); margin-top: 5px;
             color: var(--accent-2); text-transform: uppercase; letter-spacing: 1px;
         }
+
+        .pub-authors {
+            font-family: 'Manrope', sans-serif;
+            font-size: clamp(0.9rem, 1.5vw, 1.1rem);
+            color: rgba(255, 255, 255, 0.5); /* 다른 저자들은 살짝 어둡게 (가독성은 유지) */
+            margin-top: 8px;
+            margin-bottom: 8px;
+            line-height: 1.5;
+            transition: color 0.2s;
+        }
+
+        .pub-authors strong {
+            color: var(--text-main); /* 본인 이름은 밝은 흰색으로 강조 */
+            font-weight: 600;
+        }
+
+        /* 호버 시 저자 목록도 살짝 밝아지게 하려면 아래 코드 추가 (선택 사항) */
+        .pub-item:hover .pub-authors {
+            color: rgba(255, 255, 255, 0.8);
+        }
         
         .pub-item:hover .pub-title { color: var(--accent-2); }
         .pub-item:hover .pub-subtitle { color: #ffffff; }
@@ -439,11 +459,14 @@
             <a href="https://robots-oh.github.io/TASMap/" target="_blank" class="pub-item hover-target img-trigger reveal-right" data-img="./img/tasmap.png" style="transition-delay: 0.2s;">
                 <div class="pub-title">Task-Aware Semantic Map</div>
                 <div class="pub-subtitle">Autonomous Robot Task Assignment Beyond Commands</div>
+                <div class="pub-authors"><strong>Daewon Choi</strong>, Hosung Lee, Soeun Hwang and Yoonseon Oh</div>
                 <div class="pub-meta">IEEE International Conference on Robotics and Automation 2025</div>
             </a>
+
             <a href="https://robots-oh.github.io/tasmap_pp/" target="_blank" class="pub-item hover-target img-trigger reveal-left" data-img="./img/tasmap_pp.jpg" style="transition-delay: 0.4s;">
                 <div class="pub-title">Task-Aware Semantic Map++</div>
                 <div class="pub-subtitle">Cost-Efficient Task Assignment with Advanced Benchmark</div>
+                <div class="pub-authors"><strong>Daewon Choi*</strong>, Soeun Hwang* and Yoonseon Oh</div>
                 <div class="pub-meta">IEEE Robotics and Automation Letters</div>
             </a>
             <div class="pub-item hover-target reveal-right" style="transition-delay: 0.6s;">
