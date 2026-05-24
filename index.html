@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/academicons/1.9.4/css/academicons.min.css">
 
     <style>
-        /* --- [에러 수정 및 디테일 개선] 드래그 색상 밝고 선명하게 변경 --- */
+        /* --- 드래그 색상 --- */
         ::selection { background: rgba(153, 194, 255, 0.7); color: #ffffff; text-shadow: none; }
         ::-moz-selection { background: rgba(153, 194, 255, 0.7); color: #ffffff; text-shadow: none; }
 
@@ -25,10 +25,10 @@
         ::-webkit-scrollbar { width: 0; }
         a, button { cursor: none; }
 
-        /* --- 로딩 스크린 연결 적용 --- */
+        /* --- 로딩 스크린 --- */
         body.is-loading {
-            overflow: hidden; /* PC 휠 스크롤 및 키보드 스크롤 방지 */
-            touch-action: none; /* 모바일 스와이프/터치 스크롤 방지 */
+            overflow: hidden; 
+            touch-action: none; 
         }
 
         body.is-loading nav, body.is-loading #music-toggle, body.is-loading #typing-wrapper,
@@ -44,16 +44,16 @@
             position: absolute; top: calc(50% + 60px); left: 50%; transform: translateX(-50%);
             width: 0; height: 2px; background-color: #99c2ff;
             animation: loadLine 1.5s cubic-bezier(0.77, 0, 0.175, 1) forwards;
-            box-shadow: 0 0 10px rgba(153, 194, 255, 0.5);
+            box-shadow: 0 0 15px rgba(153, 194, 255, 0.6);
         }
         @keyframes loadLine { 0% { width: 0; opacity: 0; } 50% { opacity: 1; } 100% { width: 250px; opacity: 1; } }
 
         /* --- 앰비언트 글로우 --- */
-        .ambient-glow { position: fixed; border-radius: 50%; filter: blur(150px); z-index: -1; pointer-events: none; opacity: 0.4; transition: opacity 2s ease; }
+        .ambient-glow { position: fixed; border-radius: 50%; filter: blur(150px); z-index: -2; pointer-events: none; opacity: 0.4; transition: opacity 2s ease; }
         .glow-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: radial-gradient(circle, rgba(153, 194, 255, 0.15) 0%, transparent 70%); }
         .glow-2 { bottom: -20%; right: -10%; width: 60vw; height: 60vw; background: radial-gradient(circle, rgba(100, 150, 255, 0.1) 0%, transparent 70%); }
 
-        #canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -2; user-select: none; }
+        #canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -3; user-select: none; }
 
         #progress-container { position: fixed; top: 0; left: 0; width: 100%; height: 3px; z-index: 10000; background: rgba(255, 255, 255, 0.1); }
         #progress-bar { height: 100%; background: #99c2ff; width: 0%; box-shadow: 0 0 10px #99c2ff; transition: width 0.1s; }
@@ -69,12 +69,10 @@
             position: fixed; top: 0; width: 100%; padding: 20px 40px; display: flex; justify-content: flex-end; gap: 40px;
             z-index: 100; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent); pointer-events: none; 
         }
-
-        /* --- [에러 수정 및 디테일 개선] Nav 글씨 꿀렁임 제거 --- */
         nav a { 
             position: relative;
             color: #888; text-decoration: none; font-size: 1.1rem; 
-            font-weight: 500; /* 기본 굵기 유지 */
+            font-weight: 500;
             transition: all 0.3s ease; pointer-events: auto; padding-bottom: 5px; 
         }
         nav a:hover { color: #ffffff; }
@@ -97,9 +95,17 @@
 
         #typing-wrapper {
             position: fixed; top: 60%; left: 50%; transform: translateX(-50%); font-size: 1.6rem; color: #ffffff; font-weight: 500; z-index: 89; letter-spacing: 1px;
-            font-family: 'Consolas', 'Monaco', monospace; transition: opacity 0.5s; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0,0,0,0.5);
+            font-family: 'Consolas', 'Monaco', monospace; 
+            transition: opacity 0.5s; 
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0,0,0,0.5); 
         }
-        .cursor-blink { display: inline-block; width: 3px; height: 1.2em; background-color: #ffffff; margin-left: 5px; vertical-align: middle; animation: blink 1s infinite; }
+        
+        /* --- 모던하고 세련된 커서로 롤백 --- */
+        .cursor-blink { 
+            display: inline-block; width: 3px; height: 1.2em; 
+            background-color: #ffffff; margin-left: 5px; vertical-align: middle; 
+            animation: blink 1s infinite; 
+        }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 
         #scroll-hint {
@@ -114,7 +120,6 @@
         #scroll-hint:hover i { color: #99c2ff; filter: drop-shadow(0 0 8px #99c2ff); }
         @keyframes bounce { 0%, 20%, 50%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-10px); } 60% { transform: translateY(-5px); } }
 
-        /* --- [수정] 카드 자체는 살짝만 움직이고 투명도만 변하게 설정 --- */
         .glass-card {
             background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
             border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 24px; padding: 60px; max-width: 850px; width: 100%; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
@@ -122,15 +127,12 @@
         }
         .glass-card.visible { opacity: 1; transform: translateY(0); }
 
-        /* --- [추가] 텍스트 Reveal 애니메이션 클래스 --- */
         .reveal-item {
-            opacity: 0;
-            transform: translateY(30px);
+            opacity: 0; transform: translateY(30px);
             transition: opacity 0.8s cubic-bezier(0.25, 1, 0.3, 1), transform 0.8s cubic-bezier(0.25, 1, 0.3, 1);
         }
         .glass-card.visible .reveal-item { opacity: 1; transform: translateY(0); }
 
-        /* 시간차를 위한 딜레이 설정 */
         .delay-1 { transition-delay: 0.2s; }
         .delay-2 { transition-delay: 0.3s; }
         .delay-3 { transition-delay: 0.4s; }
@@ -139,7 +141,6 @@
 
         .glass-card h2 { font-size: 2.5rem; margin-top: 0; color: #99c2ff; border-bottom: 1px solid rgba(153, 194, 255, 0.2); padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; }
         
-        /* 소셜 링크 관련 스타일 (GitHub & Scholar) */
         .social-icons { display: flex; gap: 15px; align-items: center; }
         .social-icon { font-size: 1.8rem; color: rgba(153, 194, 255, 0.7); transition: all 0.3s ease; text-decoration: none; }
         .social-icon:hover { color: #ffffff; transform: scale(1.1); filter: drop-shadow(0 0 10px rgba(153, 194, 255, 0.8)); }
@@ -169,11 +170,11 @@
         .profile-img {
             width: 150px; height: 150px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
             transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease; pointer-events: auto;
+            position: relative; z-index: 2;
         }
         .profile-img:hover { transform: scale(1.05); box-shadow: 0 0 30px rgba(153, 194, 255, 0.4); }
         .contact-info { flex: 1; }
 
-        /* --- [수정] 프로필 사진 래퍼 및 Rock Star 모토 툴팁 효과 --- */
         .profile-wrapper {
             position: relative;
             display: inline-block;
@@ -181,15 +182,12 @@
 
         .rockstar-motto {
             position: absolute;
-            bottom: -15px; /* 사진 하단에 살짝 걸치도록 위치 */
+            bottom: -15px; 
             left: 50%;
-            
-            /* 중앙 정렬 + 애니메이션 시작점 세팅 (위로 살짝 올라가고 작아진 상태) */
             transform: translateX(-50%) translateY(-15px) scale(0.9);
             opacity: 0;
             visibility: hidden;
-            white-space: nowrap; /* 글씨 줄바꿈 방지 */
-            
+            white-space: nowrap; 
             font-size: 1.1rem;
             font-weight: 700;
             color: #ffffff;
@@ -198,23 +196,21 @@
             letter-spacing: 1px;
             padding: 8px 18px;
             border-radius: 12px;
-            
-            /* 가독성을 위해 살짝 어두운 반투명 배경 적용 */
             background: rgba(15, 15, 20, 0.85); 
             backdrop-filter: blur(8px);
             border: 1px solid rgba(153, 194, 255, 0.4);
-            
-            /* 통통 튀는 등장 애니메이션 */
             transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            cursor: none; 
+            
+            /* --- 툴팁 자체에 마우스 이벤트 무시 (버그 수정 유지) --- */
+            pointer-events: none; 
             z-index: 20;
         }
 
-        /* 💡 사진(래퍼)에 마우스를 올렸을 때의 변화 */
-        .profile-wrapper:hover .rockstar-motto {
+        /* --- img 태그에 호버할 때만 모토 표시 (버그 수정 유지) --- */
+        .profile-img:hover + .rockstar-motto {
             opacity: 1;
             visibility: visible;
-            transform: translateX(-50%) translateY(0) scale(1); /* 원래 위치와 크기로 복귀 */
+            transform: translateX(-50%) translateY(0) scale(1); 
             box-shadow: 0 5px 20px rgba(153, 194, 255, 0.3);
             border-color: #99c2ff;
             text-shadow: 0 0 15px rgba(153, 194, 255, 1);
@@ -321,7 +317,7 @@
                 <div class="pub-meta">IEEE Robotics and Automation Letters</div>
             </div>
             <div class="pub-item reveal-item delay-4">
-                <div class="pub-title">LITE-Planner: Leveraging Intuition and Thinking for Efficient Housekeeping Robot</div>
+                <div class="pub-title">LITE-Planner: Leveraging In-Scene Evidence and Selective LLM Reasoning for Robotic Tidying</div>
                 <div class="pub-meta">Work in Progress</div>
             </div>
             <div class="pub-item reveal-item delay-5">
@@ -337,7 +333,7 @@
             <div class="contact-content reveal-item delay-2">
                 <div class="profile-wrapper">
                     <img src="./img/my_photo.png" alt="Daewon Choi" class="profile-img">
-                    <p class="rockstar-motto">"I will be a rock star"</p>
+                    <p class="rockstar-motto">"From the bottom to the top"</p>
                 </div>
                 <div class="contact-info">
                     <p><strong style="color: #e0e0e0;">Email:</strong> <a href="mailto:cbigo@hanyang.ac.kr" class="pub-link">cbigo@hanyang.ac.kr</a></p>
