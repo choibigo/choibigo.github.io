@@ -329,7 +329,7 @@
             color: transparent; -webkit-text-stroke: 1px var(--text-main);
             transition: none; 
             position: relative;
-            word-break: break-all; /* 모바일에서 이메일 텍스트가 화면 밖으로 나가지 않도록 방지 */
+            line-height: 1.1; /* 줄바꿈 시 간격 정렬을 위해 추가 */
             max-width: 100%;
         }
         .email-link:hover { 
@@ -423,9 +423,8 @@
             <div class="about-text">
                 <p class="reveal-right" style="transition-delay: 0.2s;">
                     Hello! I am currently pursuing a Ph.D. at <strong>Hanyang University</strong>, advised by <a href="https://sites.google.com/view/robots-oh/lab" target="_blank" class="cool-link hover-target">Prof. Yoon-seon Oh</a> (2023-Present).
-                </p>
-                <p class="reveal-right" style="transition-delay: 0.4s;">
-                    Prior to my doctoral studies, I worked as a Computer Vision Researcher at <a href="https://www.mirero.co.kr/" target="_blank" class="cool-link hover-target">Mirero System</a> (2020-2023). I received my B.S. in Computer Science and Engineering from <a href="https://csai.jbnu.ac.kr/csai/index.do" target="_blank" class="cool-link hover-target">Jeonbuk National University</a> (2015-2021).
+                    </br>Prior to my doctoral studies, I worked as a Computer Vision Researcher at <a href="https://www.mirero.co.kr/" target="_blank" class="cool-link hover-target">Mirero System</a> (2020-2023).
+                    </br>I received my B.S. in Computer Science and Engineering from <a href="https://csai.jbnu.ac.kr/csai/index.do" target="_blank" class="cool-link hover-target">Jeonbuk National University</a> (2015-2021).
                 </p>
                 <div class="social-dock reveal-up" style="transition-delay: 0.6s;">
                     <a href="https://github.com/choibigo" target="_blank" class="hover-target"><i class="fa-brands fa-github"></i></a>
@@ -498,7 +497,9 @@
                     </svg>
                 </div>
             </div>
-            <a href="mailto:cbigo@hanyang.ac.kr" class="email-link hover-target reveal-up" style="transition-delay: 0.4s;">cbigo@hanyang.ac.kr</a>
+            <a href="mailto:cbigo@hanyang.ac.kr" class="email-link hover-target reveal-up" style="transition-delay: 0.4s;">
+                <span class="word-block">cbigo@</span><span class="word-block">hanyang.ac.kr</span>
+            </a>
         </div>
     </section>
 
