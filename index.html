@@ -274,7 +274,6 @@
             font-weight: 600;
         }
 
-        /* 호버 시 저자 목록도 살짝 밝아지게 하려면 아래 코드 추가 (선택 사항) */
         .pub-item:hover .pub-authors {
             color: rgba(255, 255, 255, 0.8);
         }
@@ -296,6 +295,36 @@
             opacity: 1; 
             transform: translate(60px, -50%) scale(1) rotate(0deg); 
             filter: grayscale(0%) contrast(1); 
+        }
+
+        /* --- Toast Popup --- */
+        .toast-popup {
+            position: fixed;
+            bottom: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--text-main);
+            color: var(--bg-color);
+            padding: 15px 30px;
+            border-radius: 30px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            font-weight: 600;
+            z-index: 100000;
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            pointer-events: none;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .toast-popup.show {
+            bottom: 50px;
+            opacity: 1;
+        }
+        .toast-popup i {
+            color: var(--accent-1);
         }
 
         /* --- Contact --- */
@@ -329,7 +358,7 @@
             color: transparent; -webkit-text-stroke: 1px var(--text-main);
             transition: none; 
             position: relative;
-            line-height: 1.1; /* 줄바꿈 시 간격 정렬을 위해 추가 */
+            line-height: 1.1; 
             max-width: 100%;
         }
         .email-link:hover { 
@@ -359,11 +388,12 @@
             .about-grid { grid-template-columns: 1fr; }
             .research-item { grid-template-columns: 1fr; }
             nav { padding: 20px; flex-direction: column; gap: 10px; }
-            .nav-links { flex-wrap: wrap; justify-content: center; gap: 15px; } /* 링크가 화면을 넓히지 않도록 줄바꿈 허용 */
-            .hero-title { font-size: clamp(2.5rem, 15vw, 6rem); } /* 모바일에서 화면을 벗어나지 않도록 사이즈 최적화 */
+            .nav-links { flex-wrap: wrap; justify-content: center; gap: 15px; } 
+            .hero-title { font-size: clamp(2.5rem, 15vw, 6rem); } 
             .email-link { font-size: clamp(1.2rem, 7vw, 3rem); } 
             .music-ctrl { bottom: 20px; left: 20px; width: 50px; height: 50px; }
             #hover-img { display: none !important; }
+            .toast-popup.show { bottom: 90px; } /* 모바일에서 뮤직버튼과 겹치지 않게 조절 */
         }
     </style>
 </head>
@@ -391,6 +421,11 @@
     <button class="music-ctrl hover-target" id="music-btn">
         <i class="fa-solid fa-play"></i>
     </button>
+    
+    <!-- 팝업(Toast) 알림 요소 추가 -->
+    <div id="toast-msg" class="toast-popup">
+        <i class="fa-solid fa-clock"></i> Currently in progress. Opening soon.
+    </div>
 
     <nav>
         <div class="logo">CBIGO</div>
@@ -437,15 +472,16 @@
     <section id="research">
         <h2 class="section-title reveal-left">Research Focus</h2>
         <div class="research-list">
-            <div class="research-item hover-target reveal-left" style="transition-delay: 0.2s;">
+            <!-- hover-target 제거됨 -->
+            <div class="research-item reveal-left" style="transition-delay: 0.2s;">
                 <div class="r-title">Scene<br>Understanding</div>
                 <div class="r-desc">Semantic interpretation of surroundings for intelligent navigation and interaction.</div>
             </div>
-            <div class="research-item hover-target reveal-right" style="transition-delay: 0.4s;">
+            <div class="research-item reveal-right" style="transition-delay: 0.4s;">
                 <div class="r-title">Bimanual<br>Manipulation</div>
                 <div class="r-desc">Advanced control strategies and learning for dual-arm robotic systems.</div>
             </div>
-            <div class="research-item hover-target reveal-left" style="transition-delay: 0.6s;">
+            <div class="research-item reveal-left" style="transition-delay: 0.6s;">
                 <div class="r-title">Task<br>Planning</div>
                 <div class="r-desc">Decomposing high-level human instructions into actionable robotic sequences.</div>
             </div>
@@ -468,12 +504,14 @@
                 <div class="pub-authors"><strong>Daewon Choi*</strong>, Soeun Hwang* and Yoonseon Oh</div>
                 <div class="pub-meta">IEEE Robotics and Automation Letters</div>
             </a>
-            <div class="pub-item hover-target reveal-right" style="transition-delay: 0.6s;">
+            
+            <!-- onclick 함수로 팝업 호출 추가 -->
+            <div class="pub-item hover-target reveal-right" style="transition-delay: 0.6s; cursor: none;" onclick="showWipToast()">
                 <div class="pub-title">LITE-Planner</div>
                 <div class="pub-subtitle">Leveraging In-Scene Evidence & Selective LLM Reasoning</div>
                 <div class="pub-meta">Work in Progress</div>
             </div>
-            <div class="pub-item hover-target reveal-left" style="transition-delay: 0.8s;">
+            <div class="pub-item hover-target reveal-left" style="transition-delay: 0.8s; cursor: none;" onclick="showWipToast()">
                 <div class="pub-title">DOLBi</div>
                 <div class="pub-subtitle">Demonstration-based Object-centric Learning</div>
                 <div class="pub-meta">Work in Progress</div>
@@ -650,7 +688,6 @@
         
         let isPlaying = false, audioCtx, analyser, dataArray, source;
 
-        // 첫 트랙 시작 시 임의 구간에서 시작하도록 처리
         function playRandomTrack(isInitial = false) {
             bgMusic.src = bgmList[Math.floor(Math.random() * bgmList.length)];
             bgMusic.load();
@@ -659,7 +696,6 @@
                 bgMusic.addEventListener('loadedmetadata', function setRandomTime() {
                     let dur = bgMusic.duration;
                     if(dur && dur > 0) {
-                        // 곡의 10% ~ 90% 위치 중 한 곳으로 이동
                         bgMusic.currentTime = (dur * 0.1) + Math.random() * (dur * 0.8);
                     }
                     bgMusic.removeEventListener('loadedmetadata', setRandomTime);
@@ -693,12 +729,10 @@
                 let bass = 0; 
                 for(let i=0; i<8; i++) bass += dataArray[i]; 
                 
-                // 베이스 소스 수치를 지수배(Math.pow)로 계산하여 훨씬 역동적인 펌핑 효과 구현
                 let normalizedBass = (bass / 8) / 255; 
                 let beatScale = 1 + Math.pow(normalizedBass, 2) * 2.5; 
                 
                 orbs.forEach((orb, index) => {
-                    // CSS transform 애니메이션과 충돌하지 않도록 CSS scale 속성만 따로 제어
                     orb.style.scale = beatScale + (index * 0.2 * normalizedBass);
                     orb.style.opacity = Math.min(1, 0.3 + normalizedBass * 0.7);
                 });
@@ -723,6 +757,21 @@
             }
             isPlaying = !isPlaying;
         });
+
+        // 7. Toast Notification Popup
+        let toastTimeout;
+        function showWipToast() {
+            const toast = document.getElementById('toast-msg');
+            toast.classList.add('show');
+            
+            // 기존 타이머가 있으면 초기화 (연속 클릭 시 사라지지 않도록)
+            clearTimeout(toastTimeout);
+            
+            // 3초 뒤에 토스트 숨김
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
     </script>
 </body>
 </html>
