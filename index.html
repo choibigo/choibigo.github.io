@@ -150,11 +150,11 @@
         .reveal-left.active, .reveal-right.active, .reveal-up.active { opacity: 1; transform: translate(0, 0); }
 
         /* --- Home Hero --- */
-        #home { align-items: center; text-align: center; }
+        #home { align-items: center; text-align: center; overflow: hidden; }
         .hero-title {
-            font-family: 'Syne', sans-serif; font-size: clamp(4rem, 12vw, 11rem); font-weight: 800;
+            font-family: 'Syne', sans-serif; font-size: clamp(3rem, 12vw, 11rem); font-weight: 800;
             line-height: 0.85; text-transform: uppercase; letter-spacing: -0.05em;
-            margin-bottom: 20px;
+            margin-bottom: 20px; word-wrap: break-word; max-width: 100%;
         }
         .text-outline {
             color: transparent; -webkit-text-stroke: 1px rgba(255,255,255,0.8);
@@ -276,7 +276,7 @@
 
         /* --- Contact --- */
         #contact { text-align: center; align-items: center; }
-        .contact-wrapper { position: relative; display: inline-flex; flex-direction: column; align-items: center; margin-top: 5vh; }
+        .contact-wrapper { position: relative; display: inline-flex; flex-direction: column; align-items: center; margin-top: 5vh; max-width: 100%; }
         .profile-container { position: relative; width: 300px; height: 300px; display: flex; justify-content: center; align-items: center; }
         .profile-img {
             width: 200px; height: 200px; border-radius: 50%; object-fit: cover;
@@ -292,7 +292,7 @@
         
         .spinning-text text { 
             font-family: 'JetBrains Mono', monospace; 
-            font-size: 15px; /* 폰트 크기를 키워서 원을 자연스럽게 채우도록 설정 */
+            font-size: 15px; 
             font-weight: bold; 
             fill: var(--text-muted); 
             text-transform: uppercase; 
@@ -301,11 +301,12 @@
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
         .email-link {
-            font-family: 'Syne', sans-serif; font-size: clamp(2rem, 5vw, 4rem); font-weight: 800; margin-top: 40px;
+            font-family: 'Syne', sans-serif; font-size: clamp(1.2rem, 6vw, 4rem); font-weight: 800; margin-top: 40px;
             color: transparent; -webkit-text-stroke: 1px var(--text-main);
-            /* transition 속성을 아예 제거하여 호버 시 딜레이 없이 0초만에 반응하도록 변경 */
             transition: none; 
             position: relative;
+            word-break: break-all; /* 모바일에서 이메일 텍스트가 화면 밖으로 나가지 않도록 방지 */
+            max-width: 100%;
         }
         .email-link:hover { 
             color: var(--text-main); 
@@ -333,9 +334,12 @@
         @media (max-width: 900px) {
             .about-grid { grid-template-columns: 1fr; }
             .research-item { grid-template-columns: 1fr; }
-            nav { padding: 20px; flex-direction: column; gap: 15px; }
+            nav { padding: 20px; flex-direction: column; gap: 10px; }
+            .nav-links { flex-wrap: wrap; justify-content: center; gap: 15px; } /* 링크가 화면을 넓히지 않도록 줄바꿈 허용 */
+            .hero-title { font-size: clamp(2.5rem, 15vw, 6rem); } /* 모바일에서 화면을 벗어나지 않도록 사이즈 최적화 */
+            .email-link { font-size: clamp(1.2rem, 7vw, 3rem); } 
             .music-ctrl { bottom: 20px; left: 20px; width: 50px; height: 50px; }
-            #hover-img { display: none !important; } /* Disable on mobile */
+            #hover-img { display: none !important; }
         }
     </style>
 </head>
@@ -450,14 +454,13 @@
     </section>
 
     <section id="contact">
-        <h2 class="section-title reveal-up">Connect</h2>
+        <h2 class="section-title reveal-up">Contact</h2>
         <div class="contact-wrapper reveal-up" style="transition-delay: 0.2s;">
             <div class="profile-container hover-target">
                 <img src="./img/my_photo.png" alt="Daewon Choi" class="profile-img">
                 <div class="spinning-text">
                     <svg viewBox="0 0 100 100">
                         <path id="circlePath" fill="none" d="M 50, 50 m -42, 0 a 42,42 0 1,1 84,0 a 42,42 0 1,1 -84,0" />
-                        <!-- 단일 문장으로 변경하고, textLength를 255로 설정하여 FROM과 TOP 사이에 자연스러운 여백 확보 -->
                         <text>
                             <textPath href="#circlePath" startOffset="0%" textLength="255" lengthAdjust="spacing">
                                 FROM THE BOTTOM TO THE TOP
@@ -617,12 +620,26 @@
         
         let isPlaying = false, audioCtx, analyser, dataArray, source;
 
-        function playRandomTrack() {
+        // 첫 트랙 시작 시 임의 구간에서 시작하도록 처리
+        function playRandomTrack(isInitial = false) {
             bgMusic.src = bgmList[Math.floor(Math.random() * bgmList.length)];
             bgMusic.load();
+            
+            if(isInitial) {
+                bgMusic.addEventListener('loadedmetadata', function setRandomTime() {
+                    let dur = bgMusic.duration;
+                    if(dur && dur > 0) {
+                        // 곡의 10% ~ 90% 위치 중 한 곳으로 이동
+                        bgMusic.currentTime = (dur * 0.1) + Math.random() * (dur * 0.8);
+                    }
+                    bgMusic.removeEventListener('loadedmetadata', setRandomTime);
+                });
+            } else {
+                bgMusic.play();
+            }
         }
-        playRandomTrack();
-        bgMusic.addEventListener('ended', playRandomTrack);
+        playRandomTrack(true);
+        bgMusic.addEventListener('ended', () => playRandomTrack(false));
 
         function initAudio() {
             if(!audioCtx) {
@@ -642,15 +659,24 @@
             requestAnimationFrame(renderAudioVisuals);
             if(isPlaying) {
                 analyser.getByteFrequencyData(dataArray);
-                let bass = 0; for(let i=0; i<5; i++) bass += dataArray[i]; 
-                let beatScale = 1 + (bass / 5 / 255) * 0.5;
+                
+                let bass = 0; 
+                for(let i=0; i<8; i++) bass += dataArray[i]; 
+                
+                // 베이스 소스 수치를 지수배(Math.pow)로 계산하여 훨씬 역동적인 펌핑 효과 구현
+                let normalizedBass = (bass / 8) / 255; 
+                let beatScale = 1 + Math.pow(normalizedBass, 2) * 2.5; 
                 
                 orbs.forEach((orb, index) => {
-                    orb.style.transform = `scale(${beatScale + (index * 0.1)})`;
-                    orb.style.opacity = Math.min(1, 0.4 + (bass/5/255));
+                    // CSS transform 애니메이션과 충돌하지 않도록 CSS scale 속성만 따로 제어
+                    orb.style.scale = beatScale + (index * 0.2 * normalizedBass);
+                    orb.style.opacity = Math.min(1, 0.3 + normalizedBass * 0.7);
                 });
             } else {
-                orbs.forEach(orb => { orb.style.transform = ''; orb.style.opacity = ''; });
+                orbs.forEach(orb => { 
+                    orb.style.scale = '1'; 
+                    orb.style.opacity = ''; 
+                });
             }
         }
 
