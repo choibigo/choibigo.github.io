@@ -3,536 +3,639 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CBIGO</title>
+    <title>Daewon Choi | Creative Researcher</title>
     
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='black' rx='15'/%3E%3Ctext x='50' y='50' font-family='Arial, sans-serif' font-size='70' font-weight='bold' fill='%2399c2ff' text-anchor='middle' dy='.35em'%3EC%3C/text%3E%3C/svg%3E">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='black' rx='15'/%3E%3Ctext x='50' y='50' font-family='Arial, sans-serif' font-size='70' font-weight='bold' fill='%23bd00ff' text-anchor='middle' dy='.35em'%3EC%3C/text%3E%3C/svg%3E">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/academicons/1.9.4/css/academicons.min.css">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Manrope:wght@300;400;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
 
     <style>
-        /* --- 드래그 색상 --- */
-        ::selection { background: rgba(153, 194, 255, 0.7); color: #ffffff; text-shadow: none; }
-        ::-moz-selection { background: rgba(153, 194, 255, 0.7); color: #ffffff; text-shadow: none; }
-
-        body {
-            margin: 0; padding: 0;
-            background-color: #08080a;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            color: white; overflow-x: hidden;
-            cursor: none;
+        :root {
+            --bg-color: #030303;
+            --text-main: #f0f0f0;
+            --text-muted: #888888;
+            --accent-1: #bd00ff; /* Neon Purple */
+            --accent-2: #00f0ff; /* Cyan */
+            --accent-3: #ff0055; /* Neon Pink */
         }
 
-        ::-webkit-scrollbar { width: 0; }
-        a, button { cursor: none; }
-
-        /* --- 로딩 스크린 --- */
-        body.is-loading {
-            overflow: hidden; 
-            touch-action: none; 
-        }
-
-        body.is-loading nav, body.is-loading #music-toggle, body.is-loading #typing-wrapper,
-        body.is-loading #scroll-hint, body.is-loading #progress-container { opacity: 0; pointer-events: none; }
-        nav, #music-toggle, #typing-wrapper, #scroll-hint, #progress-container { transition: opacity 1s ease; }
-
-        #preloader {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: #08080a; z-index: 85; 
-            transition: opacity 1s ease, visibility 1s ease;
-        }
-        .loader-line {
-            position: absolute; top: calc(50% + 60px); left: 50%; transform: translateX(-50%);
-            width: 0; height: 2px; background-color: #99c2ff;
-            animation: loadLine 1.5s cubic-bezier(0.77, 0, 0.175, 1) forwards;
-            box-shadow: 0 0 15px rgba(153, 194, 255, 0.6);
-        }
-        @keyframes loadLine { 0% { width: 0; opacity: 0; } 50% { opacity: 1; } 100% { width: 250px; opacity: 1; } }
-
-        /* --- 앰비언트 글로우 --- */
-        .ambient-glow { position: fixed; border-radius: 50%; filter: blur(150px); z-index: -2; pointer-events: none; opacity: 0.4; transition: opacity 2s ease; }
-        .glow-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: radial-gradient(circle, rgba(153, 194, 255, 0.15) 0%, transparent 70%); }
-        .glow-2 { bottom: -20%; right: -10%; width: 60vw; height: 60vw; background: radial-gradient(circle, rgba(100, 150, 255, 0.1) 0%, transparent 70%); }
-
-        #canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -3; user-select: none; }
-
-        #progress-container { position: fixed; top: 0; left: 0; width: 100%; height: 3px; z-index: 10000; background: rgba(255, 255, 255, 0.1); }
-        #progress-bar { height: 100%; background: #99c2ff; width: 0%; box-shadow: 0 0 10px #99c2ff; transition: width 0.1s; }
-
-        .cursor-dot, .cursor-outline { position: fixed; top: 0; left: 0; transform: translate(-50%, -50%); border-radius: 50%; z-index: 9999; pointer-events: none; }
-        .cursor-dot { width: 8px; height: 8px; background-color: #99c2ff; transition: transform 0.2s; }
-        .cursor-outline { width: 40px; height: 40px; border: 1px solid rgba(153, 194, 255, 0.5); transition: width 0.2s, height 0.2s, background-color 0.2s, border-color 0.2s; }
-        body.hovering .cursor-outline { width: 60px; height: 60px; background-color: rgba(153, 194, 255, 0.1); border-color: transparent; }
-        body.clicking .cursor-outline { width: 30px; height: 30px; background-color: rgba(153, 194, 255, 0.4); border-color: #99c2ff; }
-        body.clicking .cursor-dot { transform: translate(-50%, -50%) scale(0.5); }
-
-        nav {
-            position: fixed; top: 0; width: 100%; padding: 20px 40px; display: flex; justify-content: flex-end; gap: 40px;
-            z-index: 100; box-sizing: border-box; background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent); pointer-events: none; 
-        }
-        nav a { 
-            position: relative;
-            color: #888; text-decoration: none; font-size: 1.1rem; 
-            font-weight: 500;
-            transition: all 0.3s ease; pointer-events: auto; padding-bottom: 5px; 
-        }
-        nav a:hover { color: #ffffff; }
-        nav a.active { 
-            color: #ffffff; 
-            text-shadow: 0 0 15px rgba(153, 194, 255, 0.9), 0 0 5px rgba(255, 255, 255, 0.6); 
-        }
-
-        section { min-height: 100vh; display: flex; justify-content: center; align-items: center; position: relative; padding: 20px; box-sizing: border-box; }
-        #home { flex-direction: column; text-align: center; }
-
-        #home h1 {
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-            font-size: 5rem; font-weight: 800; margin: 0; letter-spacing: -2px;
-            background: linear-gradient(160deg, #ffffff 40%, #80b3ff 100%);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 30px rgba(153, 194, 255, 0.6)); 
-            z-index: 90; width: 100%; text-align: center; will-change: top, transform; white-space: nowrap; pointer-events: none; cursor: default; transition: opacity 0.3s;
-        }
-        #home h1:hover { opacity: 0.8; }
-
-        #typing-wrapper {
-            position: fixed; top: 60%; left: 50%; transform: translateX(-50%); font-size: 1.6rem; color: #ffffff; font-weight: 500; z-index: 89; letter-spacing: 1px;
-            font-family: 'Consolas', 'Monaco', monospace; 
-            transition: opacity 0.5s; 
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0,0,0,0.5); 
-        }
+        /* --- Base & Reset --- */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        ::selection { background: var(--text-main); color: var(--bg-color); }
         
-        /* --- 모던하고 세련된 커서로 롤백 --- */
-        .cursor-blink { 
-            display: inline-block; width: 3px; height: 1.2em; 
-            background-color: #ffffff; margin-left: 5px; vertical-align: middle; 
-            animation: blink 1s infinite; 
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Manrope', sans-serif;
+            overflow-x: hidden;
+            cursor: none; 
+            -webkit-font-smoothing: antialiased;
         }
+
+        body.is-loading {
+            overflow: hidden; /* 로딩 중 스크롤 방지 */
+        }
+
+        a, button { cursor: none; text-decoration: none; color: inherit; }
+        ul { list-style: none; }
+
+        /* --- Noise Overlay --- */
+        .noise-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            pointer-events: none; z-index: 9999; opacity: 0.04;
+            background: url('data:image/svg+xml;utf8,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E');
+        }
+
+        /* --- Dynamic Fluid Background Orbs --- */
+        .fluid-bg {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            z-index: -1; overflow: hidden; filter: blur(100px);
+            opacity: 0.6; transition: opacity 0.5s ease;
+        }
+        .orb {
+            position: absolute; border-radius: 50%;
+            mix-blend-mode: screen; transform-origin: center;
+        }
+        .orb-1 { width: 45vw; height: 45vw; background: var(--accent-1); animation: float1 18s infinite alternate ease-in-out; }
+        .orb-2 { width: 40vw; height: 40vw; background: var(--accent-2); animation: float2 22s infinite alternate-reverse ease-in-out; }
+        .orb-3 { width: 55vw; height: 55vw; background: var(--accent-3); animation: float3 25s infinite alternate ease-in-out; opacity: 0.5; }
+
+        @keyframes float1 {
+            0% { transform: translate(-10vw, -10vh) rotate(0deg) scale(1); }
+            50% { transform: translate(30vw, 20vh) rotate(180deg) scale(1.3, 0.8); }
+            100% { transform: translate(10vw, 40vh) rotate(360deg) scale(0.9, 1.2); }
+        }
+        @keyframes float2 {
+            0% { transform: translate(80vw, 10vh) rotate(0deg) scale(1.2); }
+            50% { transform: translate(40vw, 50vh) rotate(-180deg) scale(0.8, 1.1); }
+            100% { transform: translate(70vw, 80vh) rotate(-360deg) scale(1); }
+        }
+        @keyframes float3 {
+            0% { transform: translate(20vw, 80vh) rotate(0deg) scale(1); }
+            50% { transform: translate(-10vw, 40vh) rotate(180deg) scale(1.2, 0.9); }
+            100% { transform: translate(50vw, 10vh) rotate(360deg) scale(0.9, 1.3); }
+        }
+
+        /* --- Custom Cursor --- */
+        .cursor-dot {
+            position: fixed; top: 0; left: 0; width: 8px; height: 8px;
+            background: var(--text-main); border-radius: 50%;
+            transform: translate(-50%, -50%); z-index: 10000; pointer-events: none;
+            mix-blend-mode: difference;
+        }
+        .cursor-ring {
+            position: fixed; top: 0; left: 0; width: 40px; height: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.5); border-radius: 50%;
+            transform: translate(-50%, -50%); z-index: 9999; pointer-events: none;
+            transition: width 0.3s, height 0.3s, background 0.3s, border-color 0.3s;
+            mix-blend-mode: difference;
+        }
+        body.hovering .cursor-ring {
+            width: 80px; height: 80px; background: rgba(255, 255, 255, 1);
+            border-color: transparent; mix-blend-mode: difference;
+        }
+
+        /* --- Fullscreen Preloader --- */
+        #preloader {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: var(--bg-color); z-index: 100000;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transition: opacity 0.8s ease, transform 0.8s ease; pointer-events: auto;
+        }
+        .counter { font-family: 'Syne', sans-serif; font-size: clamp(4rem, 10vw, 8rem); font-weight: 800; color: var(--text-main); line-height: 1; }
+        .loading-text { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: var(--accent-2); text-transform: uppercase; letter-spacing: 4px; margin-top: 10px; }
+
+        /* --- Navigation --- */
+        nav {
+            position: fixed; top: 0; left: 0; width: 100%; padding: 30px 5vw;
+            display: flex; justify-content: space-between; align-items: center;
+            z-index: 100; mix-blend-mode: difference;
+            opacity: 0; animation: fadeIn 1s ease 1s forwards;
+        }
+        @keyframes fadeIn { to { opacity: 1; } }
+        .logo { font-family: 'Syne', sans-serif; font-size: 1.5rem; font-weight: 800; letter-spacing: -1px; }
+        .nav-links { display: flex; gap: clamp(15px, 3vw, 40px); }
+        .nav-links a {
+            font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
+            position: relative; overflow: hidden; display: inline-block;
+        }
+        .nav-links a::after {
+            content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 1px;
+            background: var(--text-main); transform: translateX(-100%); transition: transform 0.3s ease;
+        }
+        .nav-links a:hover::after, .nav-links a.active::after { transform: translateX(0); }
+
+        /* --- Layout & Sections --- */
+        section {
+            min-height: 100vh; width: 100%; padding: 15vh 5vw;
+            display: flex; flex-direction: column; justify-content: center;
+            position: relative; z-index: 10;
+        }
+
+        .section-title {
+            font-family: 'Syne', sans-serif; font-size: clamp(2.5rem, 5vw, 5rem); font-weight: 800;
+            text-transform: uppercase; margin-bottom: 5vh; border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 40px; display: inline-block;
+        }
+
+        /* --- Directional Scroll Animation Classes --- */
+        .reveal-left { opacity: 0; transform: translateX(-60px); transition: all 1s cubic-bezier(0.2, 1, 0.2, 1); }
+        .reveal-right { opacity: 0; transform: translateX(60px); transition: all 1s cubic-bezier(0.2, 1, 0.2, 1); }
+        .reveal-up { opacity: 0; transform: translateY(60px); transition: all 1s cubic-bezier(0.2, 1, 0.2, 1); }
+        
+        .reveal-left.active, .reveal-right.active, .reveal-up.active { opacity: 1; transform: translate(0, 0); }
+
+        /* --- Home Hero --- */
+        #home { align-items: center; text-align: center; }
+        .hero-title {
+            font-family: 'Syne', sans-serif; font-size: clamp(4rem, 12vw, 11rem); font-weight: 800;
+            line-height: 0.85; text-transform: uppercase; letter-spacing: -0.05em;
+            margin-bottom: 20px;
+        }
+        .text-outline {
+            color: transparent; -webkit-text-stroke: 1px rgba(255,255,255,0.8);
+            transition: all 0.5s ease;
+        }
+        .hero-title:hover .text-outline { color: var(--text-main); -webkit-text-stroke: 0px; text-shadow: 0 0 30px rgba(255,255,255,0.5); }
+        
+        .type-container {
+            font-family: 'JetBrains Mono', monospace; font-size: clamp(0.9rem, 2vw, 1.2rem);
+            background: rgba(255,255,255,0.05); padding: 10px 20px; border-radius: 30px;
+            border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px);
+            display: inline-flex; align-items: center; gap: 10px; margin-top: 20px;
+        }
+        .cursor-blink { display: inline-block; width: 8px; height: 1.2em; background: var(--accent-2); animation: blink 1s infinite; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 
-        #scroll-hint {
-            position: absolute; bottom: 15%; font-size: 1.1rem; color: #ffffff;
-            background: rgba(0, 0, 0, 0.4); padding: 10px 24px; border-radius: 50px;
-            backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-            display: flex; flex-direction: column; align-items: center; gap: 8px; 
-            animation: bounce 2s infinite ease-in-out; transition: opacity 0.5s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease; pointer-events: auto; 
+        /* --- About --- */
+        .about-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 5vw; align-items: start; }
+        .about-text p {
+            font-size: clamp(1.1rem, 2vw, 1.5rem); line-height: 1.8; color: var(--text-muted); font-weight: 300;
+            margin-bottom: 30px;
         }
-        #scroll-hint:hover { color: #99c2ff; border-color: rgba(153, 194, 255, 0.8); box-shadow: 0 0 20px rgba(153, 194, 255, 0.5); }
-        #scroll-hint i { color: #ffffff; font-size: 1.2rem; filter: drop-shadow(0 0 5px rgba(255,255,255,0.5)); transition: color 0.3s ease, filter 0.3s ease; }
-        #scroll-hint:hover i { color: #99c2ff; filter: drop-shadow(0 0 8px #99c2ff); }
-        @keyframes bounce { 0%, 20%, 50%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-10px); } 60% { transform: translateY(-5px); } }
-
-        .glass-card {
-            background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 24px; padding: 60px; max-width: 850px; width: 100%; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-            opacity: 0; transform: translateY(20px); transition: opacity 1s ease-out, transform 0.8s ease-out; pointer-events: auto; z-index: 10;
+        .about-text strong { color: var(--text-main); font-weight: 600; }
+        .cool-link {
+            position: relative; color: var(--text-main); text-decoration: none; display: inline-block;
         }
-        .glass-card.visible { opacity: 1; transform: translateY(0); }
-
-        .reveal-item {
-            opacity: 0; transform: translateY(30px);
-            transition: opacity 0.8s cubic-bezier(0.25, 1, 0.3, 1), transform 0.8s cubic-bezier(0.25, 1, 0.3, 1);
+        .cool-link::before {
+            content: ''; position: absolute; bottom: 2px; left: 0; width: 100%; height: 2px;
+            background: var(--accent-1); transform: scaleX(0); transform-origin: right;
+            transition: transform 0.4s cubic-bezier(0.86, 0, 0.07, 1);
         }
-        .glass-card.visible .reveal-item { opacity: 1; transform: translateY(0); }
+        .cool-link:hover::before { transform: scaleX(1); transform-origin: left; }
 
-        .delay-1 { transition-delay: 0.2s; }
-        .delay-2 { transition-delay: 0.3s; }
-        .delay-3 { transition-delay: 0.4s; }
-        .delay-4 { transition-delay: 0.5s; }
-        .delay-5 { transition-delay: 0.6s; }
+        .social-dock { display: flex; gap: 20px; margin-top: 20px; }
+        .social-dock a {
+            display: flex; justify-content: center; align-items: center;
+            width: 60px; height: 60px; border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.2); font-size: 1.5rem;
+            transition: all 0.3s ease; backdrop-filter: blur(10px);
+        }
+        .social-dock a:hover { background: var(--text-main); color: var(--bg-color); transform: translateY(-5px); }
 
-        .glass-card h2 { font-size: 2.5rem; margin-top: 0; color: #99c2ff; border-bottom: 1px solid rgba(153, 194, 255, 0.2); padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; }
+        /* --- Research --- */
+        .research-list { display: flex; flex-direction: column; gap: 0; border-top: 1px solid rgba(255,255,255,0.1); }
+        .research-item {
+            padding: 40px 0; border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: grid; grid-template-columns: 1fr 2fr; align-items: center; gap: 20px;
+            transition: padding 0.3s ease;
+        }
+        .research-item:hover { padding-left: 20px; background: linear-gradient(90deg, rgba(255,255,255,0.03) 0%, transparent 100%); }
+        .r-title { 
+            font-family: 'Syne', sans-serif; 
+            font-size: clamp(1.8rem, 3vw, 2.5rem); 
+            font-weight: 700; color: var(--text-main); 
+            line-height: 1.4; /* g, y 등 글자 잘림 방지 (충분한 높이 확보) */
+            padding-bottom: 10px; /* 안전 여백 추가 */
+            overflow: visible;
+        }
+        .r-desc { font-size: clamp(1rem, 1.5vw, 1.2rem); color: var(--text-muted); }
+
+        /* --- Publication (Artistic Hover Reveal) --- */
+        .pub-list { display: flex; flex-direction: column; }
+        .pub-item {
+            position: relative; padding: 50px 0; border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex; flex-direction: column; text-decoration: none; mix-blend-mode: difference;
+        }
+        .pub-title {
+            font-family: 'Syne', sans-serif; font-size: clamp(2rem, 3.5vw, 3.5rem); font-weight: 700; 
+            line-height: 1.25; /* 여기도 잘림 방지 */
+            padding-bottom: 5px;
+            transition: transform 0.4s cubic-bezier(0.1, 0.8, 0.2, 1), color 0.3s;
+        }
+        .pub-subtitle {
+            font-family: 'Manrope', sans-serif; font-size: clamp(1rem, 1.8vw, 1.2rem); font-weight: 300;
+            color: var(--text-muted); margin-top: 5px; line-height: 1.4;
+            transition: transform 0.4s cubic-bezier(0.1, 0.8, 0.2, 1) 0.05s, color 0.3s;
+        }
+        .pub-meta {
+            font-family: 'JetBrains Mono', monospace; font-size: clamp(0.7rem, 1.2vw, 0.85rem); margin-top: 15px;
+            color: var(--accent-2); text-transform: uppercase; letter-spacing: 1px;
+        }
         
-        .social-icons { display: flex; gap: 15px; align-items: center; }
-        .social-icon { font-size: 1.8rem; color: rgba(153, 194, 255, 0.7); transition: all 0.3s ease; text-decoration: none; }
-        .social-icon:hover { color: #ffffff; transform: scale(1.1); filter: drop-shadow(0 0 10px rgba(153, 194, 255, 0.8)); }
+        .pub-item:hover .pub-title { transform: translateX(30px); color: var(--text-main); }
+        .pub-item:hover .pub-subtitle { transform: translateX(30px); color: #ffffff; }
         
-        .glass-card p { font-size: 1.15rem; line-height: 1.9; color: #d1d5db; }
-        .pub-link { color: #99c2ff; text-decoration: none; border-bottom: 1px solid rgba(153, 194, 255, 0.3); transition: all 0.3s ease; display: inline-block; }
-        .pub-link:hover { color: #ffffff; border-bottom-color: #99c2ff; }
-
-        .interest-list { list-style: none; padding: 0; }
-        .interest-list li { position: relative; padding-left: 20px; margin-bottom: 15px; color: #d1d5db; font-size: 1.1rem; line-height: 1.8;}
-        .interest-list li::before { content: "•"; position: absolute; left: 0; color: #99c2ff; }
-
-        .pub-item { margin-bottom: 30px; padding-bottom: 30px; border-bottom: 1px dashed rgba(255,255,255,0.1); position: relative; }
-        .pub-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-        .pub-title { font-size: 1.25rem; font-weight: bold; margin-bottom: 8px; line-height: 1.5; }
-        .pub-meta { color: #888; font-size: 0.95rem; }
-
-        #preview-tooltip {
-            position: fixed; width: 400px; height: auto; background: rgba(0,0,0,0.8);
-            border: 1px solid rgba(153, 194, 255, 0.3); border-radius: 12px; pointer-events: none;
-            opacity: 0; transform: scale(0.8); transition: opacity 0.2s ease, transform 0.2s ease;
-            z-index: 9998; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        /* Floating Image Preview */
+        #hover-img {
+            position: fixed; top: 0; left: 0; 
+            width: clamp(300px, 30vw, 1000px);
+            object-fit: cover; pointer-events: none; opacity: 0; z-index: 5;
+            transform: translate(20px, -50%) scale(0.8) rotate(-3deg);
+            transition: opacity 0.4s ease, transform 0.8s cubic-bezier(0.2, 1, 0.2, 1);
+            border-radius: 8px; box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+            filter: grayscale(30%) contrast(1.1);
         }
-        #preview-tooltip img { width: 100%; height: 100%; object-fit: cover; }
+        #hover-img.show { 
+            opacity: 1; 
+            transform: translate(60px, -50%) scale(1) rotate(0deg); 
+            filter: grayscale(0%) contrast(1); 
+        }
 
-        .contact-content { display: flex; align-items: center; gap: 40px; } 
+        /* --- Contact --- */
+        #contact { text-align: center; align-items: center; }
+        .contact-wrapper { position: relative; display: inline-flex; flex-direction: column; align-items: center; margin-top: 5vh; }
+        .profile-container { position: relative; width: 300px; height: 300px; display: flex; justify-content: center; align-items: center; }
         .profile-img {
-            width: 150px; height: 150px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-            transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease; pointer-events: auto;
-            position: relative; z-index: 2;
+            width: 200px; height: 200px; border-radius: 50%; object-fit: cover;
+            filter: grayscale(100%); transition: all 0.5s ease; z-index: 2;
         }
-        .profile-img:hover { transform: scale(1.05); box-shadow: 0 0 30px rgba(153, 194, 255, 0.4); }
-        .contact-info { flex: 1; }
-
-        .profile-wrapper {
-            position: relative;
-            display: inline-block;
+        .profile-container:hover .profile-img { filter: grayscale(0%); transform: scale(1.05); }
+        
+        .spinning-text {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            animation: spin 15s linear infinite; pointer-events: none;
         }
+        .spinning-text svg { width: 100%; height: 100%; }
+        .spinning-text text { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: bold; fill: var(--text-muted); letter-spacing: 3px; text-transform: uppercase; }
+        .profile-container:hover .spinning-text text { fill: var(--text-main); }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
 
-        .rockstar-motto {
-            position: absolute;
-            bottom: -15px; 
-            left: 50%;
-            transform: translateX(-50%) translateY(-15px) scale(0.9);
-            opacity: 0;
-            visibility: hidden;
-            white-space: nowrap; 
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: #ffffff;
-            text-shadow: 0 0 8px rgba(153, 194, 255, 0.6);
-            font-style: italic;
-            letter-spacing: 1px;
-            padding: 8px 18px;
-            border-radius: 12px;
-            background: rgba(15, 15, 20, 0.85); 
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(153, 194, 255, 0.4);
-            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            
-            /* --- 툴팁 자체에 마우스 이벤트 무시 (버그 수정 유지) --- */
-            pointer-events: none; 
-            z-index: 20;
+        .email-link {
+            font-family: 'Syne', sans-serif; font-size: clamp(2rem, 5vw, 4rem); font-weight: 800; margin-top: 40px;
+            color: transparent; -webkit-text-stroke: 1px var(--text-main);
+            transition: all 0.3s ease; position: relative;
         }
+        .email-link:hover { color: var(--text-main); -webkit-text-stroke: 0px; text-shadow: 0 0 20px var(--accent-1); }
 
-        /* --- img 태그에 호버할 때만 모토 표시 (버그 수정 유지) --- */
-        .profile-img:hover + .rockstar-motto {
-            opacity: 1;
-            visibility: visible;
-            transform: translateX(-50%) translateY(0) scale(1); 
-            box-shadow: 0 5px 20px rgba(153, 194, 255, 0.3);
-            border-color: #99c2ff;
-            text-shadow: 0 0 15px rgba(153, 194, 255, 1);
+        /* --- Music Controller --- */
+        .music-ctrl {
+            position: fixed; bottom: 40px; left: 40px; width: 60px; height: 60px; 
+            border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px); display: flex; justify-content: center; align-items: center;
+            z-index: 100; font-size: 1.2rem; transition: all 0.3s ease;
+        }
+        .music-ctrl:hover { background: var(--text-main); color: var(--bg-color); transform: scale(1.1); }
+        .music-ctrl.playing { box-shadow: 0 0 20px var(--accent-1); border-color: var(--accent-1); }
+
+        /* --- Footer --- */
+        footer {
+            text-align: center; padding: 40px; border-top: 1px solid rgba(255,255,255,0.05);
+            font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--text-muted);
+            position: relative; z-index: 10;
         }
 
-        #music-toggle {
-            position: fixed; bottom: 30px; right: 30px; width: 50px; height: 50px; border-radius: 50%;
-            background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(153, 194, 255, 0.2);
-            color: #ffffff; font-size: 1.2rem; display: flex; justify-content: center; align-items: center;
-            z-index: 9999; cursor: none; transition: all 0.3s ease; pointer-events: auto; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-        }
-        #music-toggle:hover { background: rgba(153, 194, 255, 0.2); color: #99c2ff; border-color: #99c2ff; transform: scale(1.1); box-shadow: 0 0 20px rgba(153, 194, 255, 0.4); }
-
-        footer { text-align: center; padding: 40px 20px; color: rgba(255, 255, 255, 0.4); font-size: 0.9rem; margin-top: 50px; border-top: 1px dashed rgba(255, 255, 255, 0.1); position: relative; z-index: 10; pointer-events: none; }
-
-        @media (max-width: 1100px) {
-            nav { justify-content: center; padding: 20px; gap: 20px; background: rgba(0,0,0,0.8); }
-            #home h1 { font-size: 4rem; } #typing-wrapper { top: 55%; font-size: 1.2rem; }
-        }
-        @media (max-width: 768px) {
-            nav { gap: 15px; } #home h1 { font-size: 3rem; } #typing-wrapper { top: 55%; font-size: 1rem; }
-            #preview-tooltip { display: none; } #music-toggle { bottom: 20px; right: 20px; width: 40px; height: 40px; font-size: 1rem; }
-            .glass-card { padding: 40px 20px; } .contact-content { flex-direction: column; text-align: center; } .loader-line { top: calc(50% + 40px); }
+        /* Responsive */
+        @media (max-width: 900px) {
+            .about-grid { grid-template-columns: 1fr; }
+            .research-item { grid-template-columns: 1fr; }
+            nav { padding: 20px; flex-direction: column; gap: 15px; }
+            .music-ctrl { bottom: 20px; left: 20px; width: 50px; height: 50px; }
+            #hover-img { display: none !important; } /* Disable on mobile */
         }
     </style>
 </head>
 
 <body class="is-loading">
+    <div class="noise-overlay"></div>
     
-    <div id="preloader"><div class="loader-line"></div></div>
+    <div id="preloader">
+        <div class="counter" id="counter">0%</div>
+        <div class="loading-text">Loading Assets</div>
+    </div>
 
-    <div id="progress-container"><div id="progress-bar"></div></div>
-    <div class="ambient-glow glow-1"></div><div class="ambient-glow glow-2"></div>
+    <div class="fluid-bg">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <img id="hover-img" src="" alt="Preview">
+
+    <div class="cursor-dot"></div>
+    <div class="cursor-ring"></div>
 
     <audio id="bg-music" crossorigin="anonymous"></audio>
-    <button id="music-toggle" aria-label="Toggle Music"><i class="fa-solid fa-volume-xmark"></i></button>
+    <button class="music-ctrl hover-target" id="music-btn">
+        <i class="fa-solid fa-play"></i>
+    </button>
 
-    <div id="preview-tooltip"><img id="preview-img" src="" alt="Publication Preview"></div>
-
-    <div class="cursor-dot"></div><div class="cursor-outline"></div>
-    <div id="canvas-container"></div>
-
-    <nav id="navbar">
-        <a onclick="scrollToSection('home')" class="active">Home</a>
-        <a onclick="scrollToSection('about')">About</a>
-        <a onclick="scrollToSection('research')">Research</a>
-        <a onclick="scrollToSection('publication')">Publication</a>
-        <a onclick="scrollToSection('contact')">Contact</a>
+    <nav>
+        <div class="logo">CBIGO.</div>
+        <div class="nav-links">
+            <a href="#home" class="hover-target active">Home</a>
+            <a href="#about" class="hover-target">About</a>
+            <a href="#research" class="hover-target">Research</a>
+            <a href="#publication" class="hover-target">Work</a>
+            <a href="#contact" class="hover-target">Contact</a>
+        </div>
     </nav>
 
     <section id="home">
-        <h1 id="main-title">Daewon Choi</h1>
-        <div id="typing-wrapper"><span id="typing-text"></span><span class="cursor-blink"></span></div>
-        <p id="scroll-hint"><i class="fa-solid fa-angles-down"></i> Scroll down to know more about me</p>
+        <h1 class="hero-title">
+            <span class="text-outline">DAEWON</span><br>CHOI
+        </h1>
+        <div class="type-container">
+            <span style="color: var(--accent-1);">></span>
+            <span id="typing-text"></span><span class="cursor-blink"></span>
+        </div>
     </section>
 
     <section id="about">
-        <div class="glass-card">
-            <h2 class="reveal-item delay-1">
-                About Me 
-                <div class="social-icons">
-                    <a href="https://github.com/choibigo" target="_blank" class="social-icon" title="GitHub"><i class="fa-brands fa-github"></i></a>
-                    <a href="https://scholar.google.co.kr/citations?user=BkMyH2MAAAAJ&hl=ko&oi=sra" target="_blank" class="social-icon" title="Google Scholar"><i class="ai ai-google-scholar"></i></a>
+        <div class="about-grid">
+            <div>
+                <h2 class="section-title reveal-left">About</h2>
+            </div>
+            <div class="about-text">
+                <p class="reveal-right" style="transition-delay: 0.2s;">
+                    Hello! I am currently pursuing a Ph.D. at <strong>Hanyang University</strong>, advised by <a href="https://sites.google.com/view/robots-oh/lab" target="_blank" class="cool-link hover-target">Prof. Yoon-seon Oh</a> (2023-Present).
+                </p>
+                <p class="reveal-right" style="transition-delay: 0.4s;">
+                    Prior to my doctoral studies, I worked as a Computer Vision Researcher at <a href="https://www.mirero.co.kr/" target="_blank" class="cool-link hover-target">Mirero System</a> (2020-2023). I received my B.S. in Computer Science and Engineering from <a href="https://csai.jbnu.ac.kr/csai/index.do" target="_blank" class="cool-link hover-target">Jeonbuk National University</a> (2015-2021).
+                </p>
+                <div class="social-dock reveal-up" style="transition-delay: 0.6s;">
+                    <a href="https://github.com/choibigo" target="_blank" class="hover-target"><i class="fa-brands fa-github"></i></a>
+                    <a href="https://scholar.google.co.kr/citations?user=BkMyH2MAAAAJ&hl=ko&oi=sra" target="_blank" class="hover-target"><i class="ai ai-google-scholar"></i></a>
                 </div>
-            </h2>
-            <p class="reveal-item delay-2">
-                Hello!<br>
-                I am currently pursuing a Ph.D. at <strong>Hanyang University</strong>, advised by <a href="https://sites.google.com/view/robots-oh/lab" target="_blank" class="pub-link"><strong>Prof. Yoon-seon Oh</strong></a> (2023-Present).<br>
-                Prior to my doctoral studies, I worked as a Computer Vision Researcher at <a href="https://www.mirero.co.kr/" target="_blank" class="pub-link">Mirero System</a> (2020-2023).<br>
-                I received my B.S. in Computer Science and Engineering from <a href="https://csai.jbnu.ac.kr/csai/index.do" target="_blank" class="pub-link">Jeonbuk National University</a> (2015-2021).
-            </p>
+            </div>
         </div>
     </section>
 
     <section id="research">
-        <div class="glass-card">
-            <h2 class="reveal-item delay-1">Research Interests</h2>
-            <p class="reveal-item delay-2">My research interests lie at the intersection of <strong>Robotics</strong> and <strong>Computer Vision</strong>.</p>
-            <ul class="interest-list">
-                <li class="reveal-item delay-3"><strong>Scene Understanding:</strong> Semantic interpretation of surroundings.</li>
-                <li class="reveal-item delay-4"><strong>Bimanual Manipulation:</strong> Control strategies for dual-arm systems.</li>
-                <li class="reveal-item delay-5"><strong>Task Planning:</strong> Decomposing high-level human instructions.</li>
-            </ul>
+        <h2 class="section-title reveal-left">Research Focus</h2>
+        <div class="research-list">
+            <div class="research-item reveal-left" style="transition-delay: 0.2s;">
+                <div class="r-title">Scene<br>Understanding</div>
+                <div class="r-desc">Semantic interpretation of surroundings for intelligent navigation and interaction.</div>
+            </div>
+            <div class="research-item reveal-right" style="transition-delay: 0.4s;">
+                <div class="r-title">Bimanual<br>Manipulation</div>
+                <div class="r-desc">Advanced control strategies and learning for dual-arm robotic systems.</div>
+            </div>
+            <div class="research-item reveal-left" style="transition-delay: 0.6s;">
+                <div class="r-title">Task<br>Planning</div>
+                <div class="r-desc">Decomposing high-level human instructions into actionable robotic sequences.</div>
+            </div>
         </div>
     </section>
 
     <section id="publication">
-        <div class="glass-card">
-            <h2 class="reveal-item delay-1">Publications</h2>
-            <div class="pub-item reveal-item delay-2">
-                <div class="pub-title">
-                    <a href="https://robots-oh.github.io/TASMap/" target="_blank" class="pub-link hover-trigger" data-image="./img/tasmap.png">
-                        Task-Aware Semantic Map: Autonomous Robot Task Assignment Beyond Commands
-                    </a>
-                </div>
-                <div class="pub-meta">IEEE International Conference on Robotics and Automation 2025</div>
-            </div>
-            <div class="pub-item reveal-item delay-3">
-                <div class="pub-title">
-                    <a href="https://robots-oh.github.io/tasmap_pp/" target="_blank" class="pub-link hover-trigger" data-image="./img/tasmap_pp.jpg">
-                        Task-Aware Semantic Map++: Cost-Efficient Task Assignment with Advanced Benchmark
-                    </a>
-                </div>
-                <div class="pub-meta">IEEE Robotics and Automation Letters</div>
-            </div>
-            <div class="pub-item reveal-item delay-4">
-                <div class="pub-title">LITE-Planner: Leveraging In-Scene Evidence and Selective LLM Reasoning for Robotic Tidying</div>
+        <h2 class="section-title reveal-left">Selected Works</h2>
+        <div class="pub-list">
+            <a href="https://robots-oh.github.io/TASMap/" target="_blank" class="pub-item hover-target img-trigger reveal-right" data-img="./img/tasmap.png" style="transition-delay: 0.2s;">
+                <div class="pub-title">Task-Aware Semantic Map</div>
+                <div class="pub-subtitle">Autonomous Robot Task Assignment Beyond Commands</div>
+                <div class="pub-meta">IEEE ICRA 2025</div>
+            </a>
+            <a href="https://robots-oh.github.io/tasmap_pp/" target="_blank" class="pub-item hover-target img-trigger reveal-left" data-img="./img/tasmap_pp.jpg" style="transition-delay: 0.4s;">
+                <div class="pub-title">Task-Aware Semantic Map++</div>
+                <div class="pub-subtitle">Cost-Efficient Task Assignment with Advanced Benchmark</div>
+                <div class="pub-meta">IEEE RAL</div>
+            </a>
+            <div class="pub-item hover-target reveal-right" style="transition-delay: 0.6s;">
+                <div class="pub-title">LITE-Planner</div>
+                <div class="pub-subtitle">Leveraging In-Scene Evidence & Selective LLM Reasoning</div>
                 <div class="pub-meta">Work in Progress</div>
             </div>
-            <div class="pub-item reveal-item delay-5">
-                <div class="pub-title">DOLBi: Demonstration-based Object-centric Learning for Bimanual Manipulation</div>
+            <div class="pub-item hover-target reveal-left" style="transition-delay: 0.8s;">
+                <div class="pub-title">DOLBi</div>
+                <div class="pub-subtitle">Demonstration-based Object-centric Learning</div>
                 <div class="pub-meta">Work in Progress</div>
             </div>
         </div>
     </section>
 
     <section id="contact">
-        <div class="glass-card">
-            <h2 class="reveal-item delay-1">Contact</h2>
-            <div class="contact-content reveal-item delay-2">
-                <div class="profile-wrapper">
-                    <img src="./img/my_photo.png" alt="Daewon Choi" class="profile-img">
-                    <p class="rockstar-motto">"From the bottom to the top"</p>
-                </div>
-                <div class="contact-info">
-                    <p><strong style="color: #e0e0e0;">Email:</strong> <a href="mailto:cbigo@hanyang.ac.kr" class="pub-link">cbigo@hanyang.ac.kr</a></p>
+        <h2 class="section-title reveal-up">Connect</h2>
+        <div class="contact-wrapper reveal-up" style="transition-delay: 0.2s;">
+            <div class="profile-container hover-target">
+                <img src="./img/my_photo.png" alt="Daewon Choi" class="profile-img">
+                <div class="spinning-text">
+                    <svg viewBox="0 0 100 100">
+                        <path id="circlePath" fill="none" d="M 50, 50 m -40, 0 a 40,40 0 1,1 80,0 a 40,40 0 1,1 -80,0" />
+                        <text>
+                            <textPath href="#circlePath" startOffset="0%">
+                                • FROM THE BOTTOM TO THE TOP • FROM THE BOTTOM TO THE TOP
+                            </textPath>
+                        </text>
+                    </svg>
                 </div>
             </div>
+            <a href="mailto:cbigo@hanyang.ac.kr" class="email-link hover-target reveal-up" style="transition-delay: 0.4s;">cbigo@hanyang.ac.kr</a>
         </div>
     </section>
 
-    <div style="height: 10vh;"></div>
-    
     <footer>
-        <p>© 2026 Daewon Choi. All rights reserved. <br> <span style="font-size: 0.8rem; opacity: 0.6;">Designed by cbigo</span></p>
+        © 2026 Daewon Choi. Art Direction & Code Refined.
     </footer>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
     <script>
-        window.addEventListener('load', () => {
-            const preloader = document.getElementById('preloader');
-            setTimeout(() => {
-                preloader.style.opacity = '0';
-                preloader.style.visibility = 'hidden';
-                document.body.classList.remove('is-loading');
-                setTimeout(typeEffect, 600);
-            }, 1200); 
+        // 1. Custom Cursor & Magnetic effect
+        const cursorDot = document.querySelector('.cursor-dot');
+        const cursorRing = document.querySelector('.cursor-ring');
+        let mouseX = 0, mouseY = 0, ringX = 0, ringY = 0;
+
+        window.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX; mouseY = e.clientY;
+            cursorDot.style.left = `${mouseX}px`;
+            cursorDot.style.top = `${mouseY}px`;
         });
 
-        if (history.scrollRestoration) history.scrollRestoration = 'manual';
-        window.scrollTo(0, 0);
-
-        const cursorDot = document.querySelector('.cursor-dot'); const cursorOutline = document.querySelector('.cursor-outline');
-        const scrollHint = document.getElementById('scroll-hint'); const mainTitle = document.getElementById('main-title'); const typingWrapper = document.getElementById('typing-wrapper'); 
-
-        let mouseX = 0, mouseY = 0, outlineX = 0, outlineY = 0; let isMouseDown = false; let isBackgroundDrag = false; let targetRotationX = 0, targetRotationY = 0; let currentRotationX = 0, currentRotationY = 0; let autoScrollId = null;
-
-        scrollHint.addEventListener('click', () => {
-            if (autoScrollId) cancelAnimationFrame(autoScrollId);
-            function slowScroll() { if ((window.innerHeight + window.scrollY) < document.body.scrollHeight - 2) { window.scrollBy(0, 3); autoScrollId = requestAnimationFrame(slowScroll); } else { autoScrollId = null; } }
-            slowScroll();
-        });
-
-        const stopAutoScroll = () => { if (autoScrollId) { cancelAnimationFrame(autoScrollId); autoScrollId = null; } };
-        window.addEventListener('wheel', stopAutoScroll); window.addEventListener('touchmove', stopAutoScroll); window.addEventListener('keydown', (e) => { if(['ArrowUp','ArrowDown',' '].includes(e.key)) stopAutoScroll(); });
-        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
-
-        const typingTextElement = document.getElementById('typing-text'); const typingWords = ["Robotics", "Computer Vision", "Bimanual Manipulation", "Task Planning", "Everything New"];
-        let wordIndex = 0, charIndex = 0, isDeleting = false, typeSpeed = 100;
-
-        function typeEffect() {
-            const currentWord = typingWords[wordIndex];
-            if (isDeleting) { typingTextElement.textContent = currentWord.substring(0, charIndex - 1); charIndex--; typeSpeed = 50; } 
-            else { typingTextElement.textContent = currentWord.substring(0, charIndex + 1); charIndex++; typeSpeed = 100; }
-            if (!isDeleting && charIndex === currentWord.length) { isDeleting = true; typeSpeed = 2000; } 
-            else if (isDeleting && charIndex === 0) { isDeleting = false; wordIndex = (wordIndex + 1) % typingWords.length; typeSpeed = 500; }
-            setTimeout(typeEffect, typeSpeed);
+        function animateCursor() {
+            ringX += (mouseX - ringX) * 0.15;
+            ringY += (mouseY - ringY) * 0.15;
+            cursorRing.style.left = `${ringX}px`;
+            cursorRing.style.top = `${ringY}px`;
+            requestAnimationFrame(animateCursor);
         }
+        animateCursor();
 
-        const tooltip = document.getElementById('preview-tooltip'); const previewImg = document.getElementById('preview-img'); const triggers = document.querySelectorAll('.hover-trigger');
-        triggers.forEach(trigger => {
-            trigger.addEventListener('mouseenter', (e) => { const imgSrc = trigger.getAttribute('data-image'); if(imgSrc) { previewImg.src = imgSrc; tooltip.style.opacity = '1'; tooltip.style.transform = 'scale(1)'; } });
-            trigger.addEventListener('mouseleave', () => { tooltip.style.opacity = '0'; tooltip.style.transform = 'scale(0.8)'; });
-            trigger.addEventListener('mousemove', (e) => { tooltip.style.left = `${e.clientX + 20}px`; tooltip.style.top = `${e.clientY + 20}px`; });
-        });
-
-        mainTitle.addEventListener('click', () => scrollToSection('home'));
-
-        window.addEventListener('scroll', () => {
-            const scrollY = window.scrollY; const winH = window.innerHeight; const winW = window.innerWidth; const docH = document.body.scrollHeight;
-            document.getElementById('progress-bar').style.width = ((scrollY / (docH - winH)) * 100) + "%";
-
-            const sections = document.querySelectorAll('section'); const navLinks = document.querySelectorAll('nav a');
-            sections.forEach(sec => {
-                const top = window.scrollY; const offset = sec.offsetTop - 200; const height = sec.offsetHeight; const id = sec.getAttribute('id');
-                if(top >= offset && top < offset + height) {
-                    navLinks.forEach(link => { link.classList.remove('active'); if(link.getAttribute('onclick') && link.getAttribute('onclick').includes(id)) { link.classList.add('active'); } });
-                }
-            });
-
-            if (scrollY > 50) { scrollHint.style.opacity = '0'; scrollHint.style.pointerEvents = 'none'; typingWrapper.style.opacity = '0'; } 
-            else { scrollHint.style.opacity = '1'; scrollHint.style.pointerEvents = 'auto'; typingWrapper.style.opacity = '1'; }
-
-            const startY = winH * 0.5; let stopY, minScale;
-            if (winW > 1100) { stopY = 35; minScale = 0.5; } else { stopY = 90; minScale = 0.5; if (winW <= 768) stopY = 100; }
-            let currentTop = Math.max(startY - scrollY, stopY); let currentScale = 1 - ((1 - minScale) * Math.min(Math.max(scrollY / (startY - stopY), 0), 1));
-            mainTitle.style.top = `${currentTop}px`; mainTitle.style.transform = `translate(-50%, -50%) scale(${currentScale})`;
-            mainTitle.style.pointerEvents = currentScale <= minScale + 0.1 ? 'auto' : 'none'; mainTitle.style.cursor = currentScale <= minScale + 0.1 ? 'pointer' : 'default';
-        });
-
-        document.querySelectorAll('a, button, .glass-card, #main-title, #scroll-hint, .rockstar-motto, .social-icon').forEach(el => {
+        document.querySelectorAll('.hover-target').forEach(el => {
             el.addEventListener('mouseenter', () => document.body.classList.add('hovering'));
             el.addEventListener('mouseleave', () => document.body.classList.remove('hovering'));
         });
 
-        function scrollToSection(id) { const el = document.getElementById(id); if(el) window.scrollTo({top: el.getBoundingClientRect().top + window.pageYOffset, behavior: 'smooth'}); }
+        // 2. Fullscreen Preloader Logic
+        window.addEventListener('load', () => {
+            let count = 0;
+            const counterEl = document.getElementById('counter');
+            const preloader = document.getElementById('preloader');
+            
+            let interval = setInterval(() => {
+                count += Math.floor(Math.random() * 8) + 2;
+                if(count >= 100) {
+                    count = 100;
+                    clearInterval(interval);
+                    counterEl.innerText = count + '%';
+                    
+                    setTimeout(() => {
+                        preloader.style.opacity = '0';
+                        preloader.style.pointerEvents = 'none';
+                        document.body.classList.remove('is-loading'); 
+                        
+                        setTimeout(() => {
+                            typeEffect(); 
+                            window.dispatchEvent(new Event('scroll'));
+                        }, 500);
+                    }, 500);
+                } else {
+                    counterEl.innerText = count + '%';
+                }
+            }, 30);
+        });
+
+        // 3. Typing Effect
+        const typeEl = document.getElementById('typing-text');
+        const words = ["Robotics", "Computer Vision", "Bimanual Manipulation", "Task Planning", "Everything New"];
+        let wIdx = 0, cIdx = 0, isDeleting = false;
+
+        function typeEffect() {
+            const current = words[wIdx];
+            if(isDeleting) {
+                typeEl.innerText = current.substring(0, cIdx - 1);
+                cIdx--;
+            } else {
+                typeEl.innerText = current.substring(0, cIdx + 1);
+                cIdx++;
+            }
+
+            let speed = isDeleting ? 40 : 100;
+            if(!isDeleting && cIdx === current.length) { speed = 2000; isDeleting = true; }
+            else if(isDeleting && cIdx === 0) { isDeleting = false; wIdx = (wIdx + 1) % words.length; speed = 500; }
+            
+            setTimeout(typeEffect, speed);
+        }
+
+        // 4. Multi-Directional Scroll Reveal
+        const sections = document.querySelectorAll('section');
+        const navLinks = document.querySelectorAll('.nav-links a');
+        const reveals = document.querySelectorAll('.reveal-left, .reveal-right, .reveal-up');
+
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(sec => {
+                const secTop = sec.offsetTop;
+                if(scrollY >= secTop - window.innerHeight / 3) current = sec.getAttribute('id');
+            });
+            navLinks.forEach(a => {
+                a.classList.remove('active');
+                if(a.getAttribute('href').includes(current)) a.classList.add('active');
+            });
+
+            reveals.forEach(el => {
+                const windowHeight = window.innerHeight;
+                const elementTop = el.getBoundingClientRect().top;
+                if(elementTop < windowHeight - 150) el.classList.add('active');
+            });
+        });
+
+        // 5. Image Reveal on Publication Hover 
+        const hoverImg = document.getElementById('hover-img');
+        let imgTargetX = 0, imgTargetY = 0, imgX = 0, imgY = 0;
         
-        const observer = new IntersectionObserver((entries) => { entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('visible'); }); }, { threshold: 0.2 });
-        document.querySelectorAll('.glass-card').forEach(card => observer.observe(card));
+        document.querySelectorAll('.img-trigger').forEach(trigger => {
+            trigger.addEventListener('mouseenter', (e) => {
+                const src = trigger.getAttribute('data-img');
+                if(src) { hoverImg.src = src; hoverImg.classList.add('show'); }
+            });
+            trigger.addEventListener('mouseleave', () => hoverImg.classList.remove('show'));
+            trigger.addEventListener('mousemove', (e) => {
+                imgTargetX = e.clientX; imgTargetY = e.clientY;
+            });
+        });
 
-        const bgmList = ['./bgm_0.mp3']; const bgMusic = document.getElementById('bg-music'); const musicToggleBtn = document.getElementById('music-toggle'); const musicIcon = musicToggleBtn.querySelector('i');
-        let isMusicPlaying = false; let audioCtx, analyser, dataArray; let isAudioInitialized = false; let musicBeatValue = 0; bgMusic.volume = 0.5; 
+        function animateHoverImage() {
+            if(hoverImg.classList.contains('show')) {
+                imgX += (imgTargetX - imgX) * 0.1;
+                imgY += (imgTargetY - imgY) * 0.1;
+                hoverImg.style.left = `${imgX}px`;
+                hoverImg.style.top = `${imgY}px`;
+            }
+            requestAnimationFrame(animateHoverImage);
+        }
+        animateHoverImage();
 
-        function changeToRandomTrack() { bgMusic.src = bgmList[Math.floor(Math.random() * bgmList.length)]; bgMusic.load(); } changeToRandomTrack();
-        bgMusic.addEventListener('loadedmetadata', () => { if (bgMusic.duration) bgMusic.currentTime = Math.random() * bgMusic.duration; if (isMusicPlaying) bgMusic.play().catch(console.error); });
-        bgMusic.addEventListener('ended', changeToRandomTrack);
+        // Smooth Scroll for Anchors
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({ behavior: 'smooth' });
+            });
+        });
+
+        // 6. Audio Visualizer -> Fluid Orbs Interaction
+        const bgMusic = document.getElementById('bg-music');
+        const musicBtn = document.getElementById('music-btn');
+        const musicIcon = musicBtn.querySelector('i');
+        const orbs = document.querySelectorAll('.orb');
+        const bgmList = ['./bgm_0.mp3'];
+        
+        let isPlaying = false, audioCtx, analyser, dataArray, source;
+
+        function playRandomTrack() {
+            bgMusic.src = bgmList[Math.floor(Math.random() * bgmList.length)];
+            bgMusic.load();
+        }
+        playRandomTrack();
+        bgMusic.addEventListener('ended', playRandomTrack);
 
         function initAudio() {
-            if (!isAudioInitialized) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)(); analyser = audioCtx.createAnalyser();
-                const source = audioCtx.createMediaElementSource(bgMusic); source.connect(analyser); analyser.connect(audioCtx.destination);
-                analyser.fftSize = 256; dataArray = new Uint8Array(analyser.frequencyBinCount); isAudioInitialized = true;
+            if(!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioCtx.createAnalyser();
+                source = audioCtx.createMediaElementSource(bgMusic);
+                source.connect(analyser);
+                analyser.connect(audioCtx.destination);
+                analyser.fftSize = 256;
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+                renderAudioVisuals();
             }
-            if (audioCtx.state === 'suspended') audioCtx.resume();
+            if(audioCtx.state === 'suspended') audioCtx.resume();
         }
 
-        musicToggleBtn.addEventListener('click', () => {
-            initAudio(); 
-            if (isMusicPlaying) { bgMusic.pause(); musicIcon.classList.replace('fa-volume-high', 'fa-volume-xmark'); } 
-            else { bgMusic.play().catch(console.error); musicIcon.classList.replace('fa-volume-xmark', 'fa-volume-high'); }
-            isMusicPlaying = !isMusicPlaying;
-        });
-
-        const REPEL_RADIUS = 8.0, REPEL_STRENGTH = 3.5, BEAT_STRENGTH = 0.4;    
-        const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight); document.getElementById('canvas-container').appendChild(renderer.domElement); camera.position.z = 40;
-
-        function createCircleTexture() {
-            const canvas = document.createElement('canvas'); canvas.width = 32; canvas.height = 32; const ctx = canvas.getContext('2d');
-            const grad = ctx.createRadialGradient(16,16,0, 16,16,16); grad.addColorStop(0, 'white'); grad.addColorStop(1, 'transparent'); ctx.fillStyle = grad; ctx.fillRect(0, 0, 32, 32); return new THREE.CanvasTexture(canvas);
-        }
-
-        const particleCount = 12000; const geometry = new THREE.BufferGeometry();
-        const currentPositions = new Float32Array(particleCount * 3), initialPositions = new Float32Array(particleCount * 3), targetPositions = new Float32Array(particleCount * 3), introPositions = new Float32Array(particleCount * 3), mouseOffsets = new Float32Array(particleCount * 3); 
-
-        for (let i = 0; i < particleCount; i++) {
-            const u = Math.random(), v = Math.random(); const theta = 2 * Math.PI * u, phi = Math.acos(2 * v - 1); const r = 12 + Math.random() * 0.5;
-            initialPositions[i*3] = r * Math.sin(phi) * Math.cos(theta); initialPositions[i*3+1] = r * Math.sin(phi) * Math.sin(theta); initialPositions[i*3+2] = r * Math.cos(phi);
-            targetPositions[i*3] = (Math.random()-0.5)*300; targetPositions[i*3+1] = (Math.random()-0.5)*300; targetPositions[i*3+2] = (Math.random()-0.5)*200;
-            introPositions[i*3] = (Math.random()-0.5)*800; introPositions[i*3+1] = (Math.random()-0.5)*800; introPositions[i*3+2] = (Math.random()-0.5)*800;
-            mouseOffsets[i*3] = mouseOffsets[i*3+1] = mouseOffsets[i*3+2] = 0;
-        }
-
-        geometry.setAttribute('position', new THREE.BufferAttribute(currentPositions, 3));
-        const particles = new THREE.Points(geometry, new THREE.PointsMaterial({ color: 0x99c2ff, size: 0.4, map: createCircleTexture(), transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })); scene.add(particles);
-
-        const mouse2D = new THREE.Vector2(-1000, -1000), mouse3D = new THREE.Vector3(), raycaster = new THREE.Raycaster(), plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0); 
-        window.addEventListener('mousemove', (e) => {
-            mouseX = e.clientX; mouseY = e.clientY; mouse2D.x = (e.clientX / window.innerWidth) * 2 - 1; mouse2D.y = -(e.clientY / window.innerHeight) * 2 + 1;
-            cursorDot.style.left = `${mouseX}px`; cursorDot.style.top = `${mouseY}px`;
-            if (isBackgroundDrag) { targetRotationX += e.movementX * 0.002; targetRotationY += e.movementY * 0.002; }
-        });
-        window.addEventListener('mousedown', (e) => { if (!e.target.closest('.glass-card') && !e.target.closest('a') && !e.target.closest('button') && e.target.id !== 'main-title' && e.target.id !== 'scroll-hint') isBackgroundDrag = true; isMouseDown = true; document.body.classList.add('clicking'); });
-        window.addEventListener('mouseup', () => { isMouseDown = false; isBackgroundDrag = false; document.body.classList.remove('clicking'); });
-
-        let startTime = null;
-        function animate(timestamp) {
-            requestAnimationFrame(animate);
-            if (!startTime) startTime = timestamp; const elapsed = timestamp - startTime;
-            let introProgress = Math.min(elapsed / 1200, 1); const scrollStrength = Math.min(Math.max(window.scrollY / (document.body.scrollHeight - window.innerHeight), 0), 1);
-            
-            if (isAudioInitialized && isMusicPlaying) {
-                analyser.getByteFrequencyData(dataArray); let bassSum = 0; for (let i = 0; i < 10; i++) bassSum += dataArray[i];
-                musicBeatValue += ((bassSum / 10 / 255.0) - musicBeatValue) * 0.1; 
-                const bgIntensity = Math.floor(musicBeatValue * 12); document.body.style.backgroundColor = `rgb(${8 + bgIntensity}, ${8 + bgIntensity}, ${10 + bgIntensity})`;
-                document.querySelectorAll('.glass-card').forEach(card => { card.style.boxShadow = `0 8px 32px 0 rgba(153, 194, 255, ${0.3 + musicBeatValue * 0.5})`; });
+        function renderAudioVisuals() {
+            requestAnimationFrame(renderAudioVisuals);
+            if(isPlaying) {
+                analyser.getByteFrequencyData(dataArray);
+                let bass = 0; for(let i=0; i<5; i++) bass += dataArray[i]; 
+                let beatScale = 1 + (bass / 5 / 255) * 0.5;
+                
+                orbs.forEach((orb, index) => {
+                    orb.style.transform = `scale(${beatScale + (index * 0.1)})`;
+                    orb.style.opacity = Math.min(1, 0.4 + (bass/5/255));
+                });
             } else {
-                musicBeatValue += (0 - musicBeatValue) * 0.1; document.body.style.backgroundColor = '#08080a';
-                document.querySelectorAll('.glass-card').forEach(card => card.style.boxShadow = `0 8px 32px 0 rgba(0, 0, 0, 0.3)`);
+                orbs.forEach(orb => { orb.style.transform = ''; orb.style.opacity = ''; });
             }
-            
-            let beatScale = 1.0 + (musicBeatValue * BEAT_STRENGTH);
-            currentRotationX += (targetRotationX - currentRotationX) * 0.05; currentRotationY += (targetRotationY - currentRotationY) * 0.05;
-            particles.rotation.y = currentRotationX + (timestamp * 0.0001); particles.rotation.x = currentRotationY; particles.updateMatrixWorld();
-
-            raycaster.setFromCamera(mouse2D, camera); raycaster.ray.intersectPlane(plane, mouse3D);
-            const localMouse = mouse3D.clone(); particles.worldToLocal(localMouse);
-            const pos = particles.geometry.attributes.position.array;
-
-            for (let i = 0; i < particleCount; i++) {
-                const ix = i*3, iy = i*3+1, iz = i*3+2; let baseX, baseY, baseZ;
-                if (introProgress < 1) {
-                    baseX = introPositions[ix] + (initialPositions[ix]-introPositions[ix])*(1-Math.pow(1-introProgress,3)); baseY = introPositions[iy] + (initialPositions[iy]-introPositions[iy])*(1-Math.pow(1-introProgress,3)); baseZ = introPositions[iz] + (initialPositions[iz]-introPositions[iz])*(1-Math.pow(1-introProgress,3));
-                } else {
-                    baseX = initialPositions[ix] + (targetPositions[ix]-initialPositions[ix])*scrollStrength; baseY = initialPositions[iy] + (targetPositions[iy]-initialPositions[iy])*scrollStrength; baseZ = initialPositions[iz] + (targetPositions[iz]-initialPositions[iz])*scrollStrength;
-                }
-                baseX *= beatScale; baseY *= beatScale; baseZ *= beatScale;
-                let dx = baseX - localMouse.x; let dy = baseY - localMouse.y; let dz = baseZ - localMouse.z; let distSq = dx*dx + dy*dy + dz*dz; let targetOffsetX = 0, targetOffsetY = 0, targetOffsetZ = 0;
-                if (distSq < REPEL_RADIUS * REPEL_RADIUS && distSq > 0) {
-                    let dist = Math.sqrt(distSq); let force = Math.pow((REPEL_RADIUS - dist) / REPEL_RADIUS, 2) * REPEL_STRENGTH;
-                    targetOffsetX = (dx / dist) * force; targetOffsetY = (dy / dist) * force; targetOffsetZ = (dz / dist) * force;
-                }
-                mouseOffsets[ix] += (targetOffsetX - mouseOffsets[ix]) * 0.1; mouseOffsets[iy] += (targetOffsetY - mouseOffsets[iy]) * 0.1; mouseOffsets[iz] += (targetOffsetZ - mouseOffsets[iz]) * 0.1;
-                pos[ix] = baseX + mouseOffsets[ix]; pos[iy] = baseY + mouseOffsets[iy]; pos[iz] = baseZ + mouseOffsets[iz];
-            }
-            
-            particles.geometry.attributes.position.needsUpdate = true; outlineX += (mouseX - outlineX) * 0.15; outlineY += (mouseY - outlineY) * 0.15;
-            cursorOutline.style.left = `${outlineX}px`; cursorOutline.style.top = `${outlineY}px`; renderer.render(scene, camera);
         }
-        
-        animate();
+
+        musicBtn.addEventListener('click', () => {
+            initAudio();
+            if(isPlaying) {
+                bgMusic.pause();
+                musicIcon.classList.replace('fa-pause', 'fa-play');
+                musicBtn.classList.remove('playing');
+            } else {
+                bgMusic.play();
+                musicIcon.classList.replace('fa-play', 'fa-pause');
+                musicBtn.classList.add('playing');
+            }
+            isPlaying = !isPlaying;
+        });
     </script>
 </body>
 </html>
