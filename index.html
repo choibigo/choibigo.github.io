@@ -456,12 +456,12 @@
                 <h2 class="section-title reveal-left">About</h2>
             </div>
             <div class="about-text">
-                <p class="reveal-right" style="transition-delay: 0.2s;">
+                <p class="reveal-right">
                     Hello! I am currently pursuing a Ph.D. at <strong>Hanyang University</strong>, advised by <a href="https://sites.google.com/view/robots-oh/lab" target="_blank" class="cool-link hover-target">Prof. Yoon-seon Oh</a> (2023-Present).
                     </br>Prior to my doctoral studies, I worked as a Computer Vision Researcher at <a href="https://www.mirero.co.kr/" target="_blank" class="cool-link hover-target">Mirero System</a> (2020-2023).
                     </br>I received my B.S. in Computer Science and Engineering from <a href="https://csai.jbnu.ac.kr/csai/index.do" target="_blank" class="cool-link hover-target">Jeonbuk National University</a> (2015-2021).
                 </p>
-                <div class="social-dock reveal-up" style="transition-delay: 0.6s;">
+                <div class="social-dock reveal-up">
                     <a href="https://github.com/choibigo" target="_blank" class="hover-target"><i class="fa-brands fa-github"></i></a>
                     <a href="https://scholar.google.co.kr/citations?user=BkMyH2MAAAAJ&hl=ko&oi=sra" target="_blank" class="hover-target"><i class="ai ai-google-scholar"></i></a>
                 </div>
@@ -473,15 +473,15 @@
         <h2 class="section-title reveal-left">Research Focus</h2>
         <div class="research-list">
             <!-- hover-target 제거됨 -->
-            <div class="research-item reveal-left" style="transition-delay: 0.2s;">
+            <div class="research-item reveal-left">
                 <div class="r-title">Scene<br>Understanding</div>
                 <div class="r-desc">Semantic interpretation of surroundings for intelligent navigation and interaction.</div>
             </div>
-            <div class="research-item reveal-right" style="transition-delay: 0.4s;">
+            <div class="research-item reveal-right">
                 <div class="r-title">Bimanual<br>Manipulation</div>
                 <div class="r-desc">Advanced control strategies and learning for dual-arm robotic systems.</div>
             </div>
-            <div class="research-item reveal-left" style="transition-delay: 0.6s;">
+            <div class="research-item reveal-left">
                 <div class="r-title">Task<br>Planning</div>
                 <div class="r-desc">Decomposing high-level human instructions into actionable robotic sequences.</div>
             </div>
@@ -491,14 +491,14 @@
     <section id="publication">
         <h2 class="section-title reveal-left">Selected Works</h2>
         <div class="pub-list">
-            <a href="https://robots-oh.github.io/TASMap/" target="_blank" class="pub-item hover-target img-trigger reveal-right" data-img="./img/tasmap.png" style="transition-delay: 0.2s;">
+            <a href="https://robots-oh.github.io/TASMap/" target="_blank" class="pub-item hover-target img-trigger reveal-right" data-img="./img/tasmap.png">
                 <div class="pub-title">Task-Aware Semantic Map</div>
                 <div class="pub-subtitle">Autonomous Robot Task Assignment Beyond Commands</div>
                 <div class="pub-authors"><strong>Daewon Choi</strong>, Hosung Lee, Soeun Hwang and Yoonseon Oh</div>
                 <div class="pub-meta">IEEE International Conference on Robotics and Automation 2025</div>
             </a>
 
-            <a href="https://robots-oh.github.io/tasmap_pp/" target="_blank" class="pub-item hover-target img-trigger reveal-left" data-img="./img/tasmap_pp.jpg" style="transition-delay: 0.4s;">
+            <a href="https://robots-oh.github.io/tasmap_pp/" target="_blank" class="pub-item hover-target img-trigger reveal-left" data-img="./img/tasmap_pp.jpg">
                 <div class="pub-title">Task-Aware Semantic Map++</div>
                 <div class="pub-subtitle">Cost-Efficient Task Assignment with Advanced Benchmark</div>
                 <div class="pub-authors"><strong>Daewon Choi*</strong>, Soeun Hwang* and Yoonseon Oh</div>
@@ -506,12 +506,12 @@
             </a>
             
             <!-- onclick 함수로 팝업 호출 추가 -->
-            <div class="pub-item hover-target reveal-right" style="transition-delay: 0.6s; cursor: none;" onclick="showWipToast()">
+            <div class="pub-item hover-target reveal-right" style="cursor: none;" onclick="showWipToast()">
                 <div class="pub-title">LITE-Planner</div>
                 <div class="pub-subtitle">Leveraging In-Scene Evidence & Selective LLM Reasoning</div>
                 <div class="pub-meta">Work in Progress</div>
             </div>
-            <div class="pub-item hover-target reveal-left" style="transition-delay: 0.8s; cursor: none;" onclick="showWipToast()">
+            <div class="pub-item hover-target reveal-left" style="cursor: none;" onclick="showWipToast()">
                 <div class="pub-title">DOLBi</div>
                 <div class="pub-subtitle">Demonstration-based Object-centric Learning</div>
                 <div class="pub-meta">Work in Progress</div>
@@ -521,7 +521,7 @@
 
     <section id="contact">
         <h2 class="section-title reveal-up">Contact</h2>
-        <div class="contact-wrapper reveal-up" style="transition-delay: 0.2s;">
+        <div class="contact-wrapper reveal-up">
             <div class="profile-container hover-target">
                 <img src="./img/my_photo.png" alt="Daewon Choi" class="profile-img">
                 <div class="spinning-text">
@@ -535,7 +535,7 @@
                     </svg>
                 </div>
             </div>
-            <a href="mailto:cbigo@hanyang.ac.kr" class="email-link hover-target reveal-up" style="transition-delay: 0.4s;">
+            <a href="mailto:cbigo@hanyang.ac.kr" class="email-link hover-target reveal-up">
                 <span class="word-block">cbigo@</span><span class="word-block">hanyang.ac.kr</span>
             </a>
         </div>
@@ -622,11 +622,10 @@
             setTimeout(typeEffect, speed);
         }
 
-        // 4. Multi-Directional Scroll Reveal
+        // 4. Navigation Active State & Multi-Directional Scroll Reveal
         const sections = document.querySelectorAll('section');
         const navLinks = document.querySelectorAll('.nav-links a');
-        const reveals = document.querySelectorAll('.reveal-left, .reveal-right, .reveal-up');
-
+        
         window.addEventListener('scroll', () => {
             let current = '';
             sections.forEach(sec => {
@@ -637,12 +636,26 @@
                 a.classList.remove('active');
                 if(a.getAttribute('href').includes(current)) a.classList.add('active');
             });
+        });
 
-            reveals.forEach(el => {
-                const windowHeight = window.innerHeight;
-                const elementTop = el.getBoundingClientRect().top;
-                if(elementTop < windowHeight - 150) el.classList.add('active');
+        // Use IntersectionObserver for natural scroll reveals
+        const revealOptions = {
+            root: null,
+            rootMargin: '0px 0px -100px 0px',
+            threshold: 0.1
+        };
+
+        const revealObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('active');
+                    observer.unobserve(entry.target);
+                }
             });
+        }, revealOptions);
+
+        document.querySelectorAll('.reveal-left, .reveal-right, .reveal-up').forEach(el => {
+            revealObserver.observe(el);
         });
 
         // 5. Image Reveal on Publication Hover 
