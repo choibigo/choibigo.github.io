@@ -164,7 +164,7 @@
             color: transparent; -webkit-text-stroke: 1px rgba(255,255,255,0.8);
             transition: all 0.5s ease;
         }
-        .hero-title:hover .text-outline { color: var(--text-main); -webkit-text-stroke: 0px; text-shadow: 0 0 30px rgba(255,255,255,0.5); }
+        .text-outline:hover { color: var(--text-main); -webkit-text-stroke: 0px; text-shadow: 0 0 30px rgba(255,255,255,0.5); }
         
         .type-container {
             font-family: 'JetBrains Mono', monospace; font-size: clamp(0.9rem, 2vw, 1.2rem);
@@ -234,9 +234,18 @@
         /* --- Publication (Artistic Hover Reveal) --- */
         .pub-list { display: flex; flex-direction: column; }
         .pub-item {
-            position: relative; padding: 50px 0; border-bottom: 1px solid rgba(255,255,255,0.1);
+            position: relative; padding: 50px 30px; border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin: 0 -30px;
             display: flex; flex-direction: column; text-decoration: none; mix-blend-mode: difference;
             overflow: visible;
+            border-radius: 20px;
+            transition: all 0.4s cubic-bezier(0.2, 1, 0.2, 1);
+        }
+        .pub-item:hover {
+            transform: translateY(-4px);
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom-color: transparent;
+            z-index: 10;
         }
         .pub-title {
             font-family: 'Syne', sans-serif; font-size: clamp(2rem, 3.5vw, 3.5rem); font-weight: 700; 
@@ -546,6 +555,12 @@
     </footer>
 
     <script>
+        // 0. Reset Scroll Position on Reload
+        if ('scrollRestoration' in history) {
+            history.scrollRestoration = 'manual';
+        }
+        window.scrollTo(0, 0);
+
         // 1. Custom Cursor & Magnetic effect
         const cursorDot = document.querySelector('.cursor-dot');
         const cursorRing = document.querySelector('.cursor-ring');
