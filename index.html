@@ -396,13 +396,20 @@
         @media (max-width: 900px) {
             .about-grid { grid-template-columns: 1fr; }
             .research-item { grid-template-columns: 1fr; }
-            nav { padding: 20px; flex-direction: column; gap: 10px; }
-            .nav-links { flex-wrap: wrap; justify-content: center; gap: 15px; } 
+            nav { padding: 20px; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 15px; }
+            .nav-links { flex-wrap: wrap; justify-content: center; gap: 15px; width: 100%; } 
             .hero-title { font-size: clamp(2.5rem, 15vw, 6rem); } 
             .email-link { font-size: clamp(1.2rem, 7vw, 3rem); } 
             .music-ctrl { bottom: 20px; left: 20px; width: 50px; height: 50px; }
             #hover-img { display: none !important; }
             .toast-popup.show { bottom: 90px; } /* 모바일에서 뮤직버튼과 겹치지 않게 조절 */
+        }
+
+        /* Touch Device Optimizations */
+        @media (hover: none) and (pointer: coarse) {
+            .cursor-dot, .cursor-ring { display: none !important; }
+            body { cursor: auto !important; }
+            a, button, .pub-item, .hover-target { cursor: pointer !important; }
         }
     </style>
 </head>
@@ -651,6 +658,14 @@
                 a.classList.remove('active');
                 if(a.getAttribute('href').includes(current)) a.classList.add('active');
             });
+            
+            // Dynamic Background Animation on Scroll
+            const scrolled = window.scrollY;
+            const maxScroll = document.body.scrollHeight - window.innerHeight;
+            const scrollRatio = maxScroll > 0 ? scrolled / maxScroll : 0;
+            
+            // Change hue based on scroll position (0 to 360deg)
+            document.querySelector('.fluid-bg').style.filter = `blur(100px) hue-rotate(${scrollRatio * 360}deg)`;
         });
 
         // Use IntersectionObserver for natural scroll reveals
