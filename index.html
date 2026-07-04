@@ -231,25 +231,41 @@
         .social-dock a:hover { background: var(--text-main); color: var(--bg-color); transform: translateY(-5px); }
 
         /* --- Research --- */
-        .research-list { display: flex; flex-direction: column; gap: 0; border-top: 1px solid rgba(255,255,255,0.1); }
-        .research-item {
-            padding: 40px 0; border-bottom: 1px solid rgba(255,255,255,0.1);
-            display: grid; grid-template-columns: 1fr 2fr; align-items: center; gap: 20px;
-            transition: background 0.15s ease-out;
+        .research-list { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+            gap: 20px; 
+            border-top: none; 
+            padding-top: 20px;
         }
-        .research-item:hover { background: linear-gradient(90deg, rgba(255,255,255,0.03) 0%, transparent 100%); }
+        .research-item {
+            padding: 30px; 
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: flex-start;
+            gap: 15px;
+            background: rgba(255,255,255,0.02);
+            transition: transform 0.4s ease, background 0.4s ease, border-color 0.4s ease;
+        }
+        .research-item:hover { 
+            background: rgba(255,255,255,0.04); 
+            border-color: rgba(255,255,255,0.15);
+        }
         .r-title { 
             font-family: 'Syne', sans-serif; 
-            font-size: clamp(1.8rem, 3vw, 2.5rem); 
+            font-size: clamp(1.4rem, 2vw, 1.8rem); 
             font-weight: 700; color: var(--text-main); 
-            line-height: 1.4; 
+            line-height: 1.2; 
             display: block; 
-            padding-bottom: 0.3em; 
-            overflow: visible;
+            text-align: center;
         }
         .r-desc { 
-            font-size: clamp(1rem, 1.5vw, 1.2rem); color: var(--text-muted); line-height: 1.6; 
-            display: block; padding-bottom: 0.3em; 
+            font-size: 1.05rem; color: var(--text-muted); line-height: 1.6; 
+            display: block; flex-grow: 1;
+            text-align: center;
         }
 
         /* --- Publication (Artistic Hover Reveal) --- */
@@ -416,7 +432,6 @@
         /* Responsive */
         @media (max-width: 900px) {
             .about-grid { grid-template-columns: 1fr; }
-            .research-item { grid-template-columns: 1fr; }
             .pub-item { margin: 0; padding: 30px 0; }
             nav { padding: 20px; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 15px; }
             .nav-links { flex-wrap: wrap; justify-content: center; gap: 15px; width: 100%; } 
@@ -508,18 +523,25 @@
     <section id="research">
         <h2 class="section-title reveal-left">Research Focus</h2>
         <div class="research-list">
-            <!-- hover-target 제거됨 -->
             <div class="research-item reveal-left">
-                <div class="r-title">Scene<br>Understanding</div>
-                <div class="r-desc">Semantic interpretation of surroundings for intelligent navigation and interaction.</div>
+                <div class="r-title">Robot Action<br>from Video</div>
+                <div class="r-desc">Learning robust control policies directly from human demonstration videos to acquire complex behaviors without structured datasets.</div>
             </div>
             <div class="research-item reveal-right">
+                <div class="r-title">Dexterous<br>Hand</div>
+                <div class="r-desc">Developing highly articulate robotic end-effectors for fine motor control, tactile sensing, and dynamic grasping of varied objects.</div>
+            </div>
+            <div class="research-item reveal-left">
                 <div class="r-title">Bimanual<br>Manipulation</div>
-                <div class="r-desc">Advanced control strategies and learning for dual-arm robotic systems.</div>
+                <div class="r-desc">Advanced coordination algorithms for dual-arm systems to solve tasks requiring simultaneous holding, assembly, or handover.</div>
+            </div>
+            <div class="research-item reveal-right">
+                <div class="r-title">Scene<br>Understanding</div>
+                <div class="r-desc">Semantic and spatial interpretation of environments using multi-modal perception to build actionable 3D maps for navigation.</div>
             </div>
             <div class="research-item reveal-left">
                 <div class="r-title">Task<br>Planning</div>
-                <div class="r-desc">Decomposing high-level human instructions into actionable robotic sequences.</div>
+                <div class="r-desc">Decomposing natural language human instructions into actionable robotic sequences, bridging the gap between LLMs and physical execution.</div>
             </div>
         </div>
     </section>
@@ -957,11 +979,13 @@
             threshold: 0.1
         };
 
-        const revealObserver = new IntersectionObserver((entries, observer) => {
+        const revealObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     entry.target.classList.add('active');
-                    observer.unobserve(entry.target);
+                } else if (entry.boundingClientRect.top > 0) {
+                    // Only reset when scrolling up (element goes off the bottom of the viewport)
+                    entry.target.classList.remove('active');
                 }
             });
         }, revealOptions);
