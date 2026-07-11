@@ -206,6 +206,90 @@
             margin-bottom: 30px;
         }
         .about-text strong { color: var(--text-main); font-weight: 600; }
+
+        /* --- Timeline (About Section) --- */
+        .timeline {
+            position: relative;
+            padding-left: 50px;
+            margin-bottom: 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 10px;
+            top: 25px;
+            bottom: 25px;
+            width: 4px;
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.15);
+            opacity: 1;
+        }
+        .timeline-item {
+            position: relative;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 25px;
+            transition: all 0.4s cubic-bezier(0.2, 1, 0.2, 1);
+            backdrop-filter: blur(10px);
+        }
+        .timeline-item:hover {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+        .timeline-dot {
+            position: absolute;
+            left: -47px;
+            top: 30px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--bg-color);
+            border: 3px solid rgba(255, 255, 255, 0.45);
+            box-shadow: 0 0 12px rgba(255, 255, 255, 0.2), inset 0 0 5px rgba(255, 255, 255, 0.15);
+            transition: all 0.4s cubic-bezier(0.2, 1, 0.2, 1);
+            z-index: 2;
+        }
+
+        .timeline-item:hover .timeline-dot {
+            background: var(--text-main);
+            border-color: var(--text-main);
+            box-shadow: 0 0 12px rgba(255, 255, 255, 0.4);
+            transform: scale(1.2);
+        }
+        .timeline-date {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        .timeline-date span {
+            padding: 5px 12px;
+            border-radius: 20px;
+            background: rgba(255,255,255,0.05);
+            color: var(--text-main);
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .timeline-content h3 {
+            font-family: 'Syne', sans-serif;
+            font-size: clamp(1.3rem, 2.5vw, 1.6rem);
+            color: var(--text-main);
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        .timeline-content p {
+            font-size: clamp(1.1rem, 1.5vw, 1.25rem);
+            color: #d0d0d0;
+            line-height: 1.6;
+            margin: 0 !important;
+        }
         
         .cool-link {
             position: relative; 
@@ -401,15 +485,16 @@
 
         .email-link {
             font-family: 'Syne', sans-serif; font-size: clamp(1.2rem, 6vw, 4rem); font-weight: 800; margin-top: 40px;
-            color: transparent; -webkit-text-stroke: 1px var(--text-main);
-            transition: none; 
+            color: rgba(255, 255, 255, 0.9);
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+            transition: all 0.3s ease; 
             position: relative;
             line-height: 1.1; 
             max-width: 100%;
         }
         .email-link:hover { 
             color: var(--text-main); 
-            text-shadow: 0 0 20px var(--accent-1); 
+            text-shadow: 0 0 25px var(--accent-1), 0 0 10px var(--text-main); 
         }
 
         /* --- Music Controller --- */
@@ -432,6 +517,7 @@
         /* Responsive */
         @media (max-width: 900px) {
             .about-grid { grid-template-columns: 1fr; }
+            .timeline-item { padding: 15px; } /* 모바일에서 내부 여백 축소 */
             .pub-item { margin: 0; padding: 30px 0; }
             nav { padding: 20px; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 15px; }
             .nav-links { flex-wrap: wrap; justify-content: center; gap: 15px; width: 100%; } 
@@ -456,7 +542,7 @@
     
     <div id="preloader">
         <div class="counter" id="counter">0%</div>
-        <div class="loading-text">Loading Assets</div>
+        <div class="loading-text">Loading...</div>
     </div>
 
     <div class="fluid-bg" aria-hidden="true">
@@ -507,11 +593,34 @@
                 <h2 class="section-title reveal-left">About</h2>
             </div>
             <div class="about-text">
-                <p class="reveal-right">
-                    Hello! I am currently pursuing a Ph.D. at <strong>Hanyang University</strong>, advised by <a href="https://sites.google.com/view/robots-oh/lab" target="_blank" class="cool-link hover-target">Prof. Yoonseon Oh</a> (2023-Present).
-                    </br>Prior to my doctoral studies, I worked as a Computer Vision Researcher at <a href="https://www.mirero.co.kr/" target="_blank" class="cool-link hover-target">Mirero System</a> (2020-2023).
-                    </br>I received my B.S. in Computer Science and Engineering from <a href="https://csai.jbnu.ac.kr/csai/index.do" target="_blank" class="cool-link hover-target">Jeonbuk National University</a> (2015-2021).
-                </p>
+                <div class="timeline">
+                    <div class="timeline-item reveal-right">
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-date"><span>2023 — Present</span></div>
+                        <div class="timeline-content">
+                            <h3>Ph.D. in Robotics</h3>
+                            <p><strong>Hanyang University</strong><br>Advised by <a href="https://sites.google.com/view/robots-oh/lab" target="_blank" class="cool-link hover-target">Prof. Yoonseon Oh</a></p>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item reveal-right">
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-date"><span>2020 — 2023</span></div>
+                        <div class="timeline-content">
+                            <h3>Computer Vision Researcher</h3>
+                            <p><a href="https://www.mirero.co.kr/" target="_blank" class="cool-link hover-target">Mirero System</a></p>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item reveal-right">
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-date"><span>2015 — 2021</span></div>
+                        <div class="timeline-content">
+                            <h3>B.S. in Computer Science & Engineering</h3>
+                            <p><a href="https://csai.jbnu.ac.kr/csai/index.do" target="_blank" class="cool-link hover-target">Jeonbuk National University</a></p>
+                        </div>
+                    </div>
+                </div>
                 <div class="social-dock reveal-up">
                     <a href="https://github.com/choibigo" target="_blank" class="hover-target"><i class="fa-brands fa-github"></i></a>
                     <a href="https://scholar.google.co.kr/citations?user=BkMyH2MAAAAJ&hl=ko&oi=sra" target="_blank" class="hover-target"><i class="ai ai-google-scholar"></i></a>
