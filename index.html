@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" class="is-loading">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -54,8 +54,10 @@
             -webkit-font-smoothing: antialiased;
         }
 
+        html.is-loading,
         body.is-loading {
-            overflow: hidden; /* 로딩 중 스크롤 방지 */
+            overflow: hidden; /* 로딩 중 스크롤 및 스크롤바 방지 */
+            height: 100%;
         }
 
         a, button { cursor: none; text-decoration: none; color: inherit; }
@@ -1021,7 +1023,8 @@
                     setTimeout(() => {
                         preloader.style.opacity = '0';
                         preloader.style.pointerEvents = 'none';
-                        document.body.classList.remove('is-loading'); 
+                        document.documentElement.classList.remove('is-loading');
+                        document.body.classList.remove('is-loading');
                         
                         setTimeout(() => {
                             typeEffect(); 
