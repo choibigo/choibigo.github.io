@@ -551,8 +551,6 @@ body:not([data-view="index"]) .close-btn {
 }
 .email:hover { border-color: var(--ink); }
 
-.contact-note { font-size: 0.85em; color: var(--ink-dim); line-height: 1.7; }
-
 /* ============================================================
    Persistent chrome
    ============================================================ */

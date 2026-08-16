@@ -494,18 +494,35 @@ window.addEventListener('load', () => {
 const hoverImg = document.getElementById('hover-img');
 let ix = 0, iy = 0, itx = 0, ity = 0;
 
-document.querySelectorAll('.img-trigger').forEach(el => {
+/* Decode the previews up front. Swapping to an undecoded image blanks the
+   element for a frame, which is what made the change look like a cut. */
+document.querySelectorAll('.pub-item[data-img]').forEach(el => {
+    const im = new Image();
+    im.src = el.dataset.img;
+    if (im.decode) im.decode().catch(() => {});
+});
+
+document.querySelectorAll('.pub-item').forEach(el => {
     el.addEventListener('mouseenter', () => {
         const src = el.dataset.img;
-        if (!src) return;
+        if (!src) { hoverImg.classList.remove('show'); return; }
+
+        // Only re-seat the frame when it first appears; moving from one entry
+        // to the next swaps the picture in place instead of fading out and
+        // flying back in.
+        if (!hoverImg.classList.contains('show')) {
+            itx = ix = mx;
+            ity = iy = my;
+        }
         hoverImg.src = src;
-        itx = ix = mx;
-        ity = iy = my;
         hoverImg.classList.add('show');
     });
-    el.addEventListener('mouseleave', () => hoverImg.classList.remove('show'));
     el.addEventListener('mousemove', () => { itx = mx; ity = my; });
 });
+
+/* Hide only once the pointer leaves the whole list. */
+const pubList = document.querySelector('.pub-list');
+if (pubList) pubList.addEventListener('mouseleave', () => hoverImg.classList.remove('show'));
 
 (function animateHoverImg() {
     if (hoverImg.classList.contains('show')) {
