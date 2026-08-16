@@ -456,6 +456,12 @@ document.addEventListener('click', (e) => {
     if (document.body.dataset.view === 'index') return;
     if (e.target.closest('.index, #close-btn, .music-ctrl')) return;
 
+    /* Interactive elements and list rows count as content wherever inside
+       them the click lands. Their boxes are wider and taller than the text
+       they hold — hit-testing the text alone closed the panel on clicks that
+       had in fact landed on a link, or between the columns of a row. */
+    if (e.target.closest('a, button, input, textarea, select, label, summary, .area, .pub-item, .cv li')) return;
+
     const panel = document.querySelector('.page.active');
     if (panel && pointHitsContent(panel, e.clientX, e.clientY)) return;
 

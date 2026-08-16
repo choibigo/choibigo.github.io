@@ -41,8 +41,10 @@ window.initFluidBackdrop = function (canvas, onReady) {
         COORD_RELAX: 0.004,       // how fast the water surface un-distorts
         MAX_STROKE: 0.030,        // caps how hard one frame's stroke can hit
         INTRO_SECONDS: 1.0,       // droplets of paint land until the canvas fills
-        DROP_COLS: 4,             // one drop per cell, in shuffled order — 8 drops
-        DROP_ROWS: 2,
+        /* Smaller drops need more of them to cover the canvas. That is fine
+           now that painted ground is masked out — the glare came from
+           overlapping repaints, not from the number of drops. */
+        DROP_COUNT: 6,
         INK_RADIUS: 0.085         // logo-click drop; randomised 0.5x .. 1.5x
     };
 
@@ -194,6 +196,44 @@ window.initFluidBackdrop = function (canvas, onReady) {
         vec2 d = p - c;
         vec2 rot = vec2(-d.y, d.x) * (u_strength * exp(-dot(d, d) / max(u_radius, 1e-6)));
         o = vec4(texture(u_target, vUv).xy + rot, 0.0, 1.0);
+    }`;
+
+    /* The impact itself: shove the surrounding water outward.
+
+       This has to act on the dye directly. An outward push in the velocity
+       field is pure divergence, and the pressure solve exists precisely to
+       remove that — the splash would be cancelled before it was ever drawn.
+       Gathering each pixel from further in moves the paint outward, so a
+       crater opens and the displaced paint piles into a rim. */
+    const SPLASH = HEAD + `
+    uniform sampler2D u_src;
+    uniform vec2  u_point;
+    uniform float u_radius, u_aspect, u_strength;
+    void main() {
+        vec2 d = vUv - u_point;
+        vec2 s = d * vec2(u_aspect, 1.0);
+        float dist = length(s) + 1e-6;
+
+        // Strongest just off centre, fading out — the shape of a real crown.
+        float k = dist / u_radius;
+        float push = u_strength * k * exp(1.0 - k * k);
+
+        o = texture(u_src, vUv - (d / dist) * push);
+    }`;
+
+    /* Damp the velocity inside a patch. A drop landing on water that is
+       already moving gets wound into a spiral no matter how little vorticity
+       it adds itself, so stilling the water first is what lets it stay a
+       droplet. */
+    const CALM = HEAD + `
+    uniform sampler2D u_target;
+    uniform vec2  u_point;
+    uniform float u_radius, u_aspect, u_amount;
+    void main() {
+        vec2 p = vUv;      p.x *= u_aspect;
+        vec2 c = u_point;  c.x *= u_aspect;
+        float g = exp(-dot(p - c, p - c) / max(u_radius, 1e-6));
+        o = vec4(texture(u_target, vUv).xy * (1.0 - u_amount * g), 0.0, 1.0);
     }`;
 
     /* Semi-Lagrangian transport: walk backwards along the velocity field. */
@@ -354,8 +394,20 @@ window.initFluidBackdrop = function (canvas, onReady) {
     const DROP = HEAD + BLOB_LIB + `
     uniform sampler2D u_dye, u_base;
     void main() {
-        float m = blobMask(vUv);
-        o = vec4(mix(texture(u_dye, vUv).xyz, texture(u_base, vUv).xyz, m), 1.0);
+        vec3 cur  = texture(u_dye, vUv).xyz;
+        vec3 base = texture(u_base, vUv).xyz;
+
+        /* Fill only what is still empty, so each drop shows progress instead
+           of repainting ground that is already done. The test is against this
+           pixel's own finished value — an absolute threshold stops the dim
+           corners and the bright centres at completely different points.
+
+           Painted ground keeps a small share so edges still knit together,
+           but nowhere near enough to re-brighten it. */
+        float ratio = cur.z / max(base.z, 1e-4);
+        float empty = mix(0.07, 1.0, 1.0 - smoothstep(0.04, 0.62, ratio));
+
+        o = vec4(mix(cur, base, blobMask(vUv) * empty), 1.0);
     }`;
 
     /* A single drop of an arbitrary colour. Same uneven outline as the intro
@@ -445,7 +497,8 @@ window.initFluidBackdrop = function (canvas, onReady) {
         float h  = glassHeight(sp, t);
         float hx = glassHeight(sp + vec2(e, 0.0), t);
         float hy = glassHeight(sp + vec2(0.0, e), t);
-        vec3  n  = normalize(vec3(-(hx - h) / e * 0.05, -(hy - h) / e * 0.05, 1.0));
+
+        vec3 n = normalize(vec3(-(hx - h) / e * 0.05, -(hy - h) / e * 0.05, 1.0));
 
         /* Refract the paint, with per-channel dispersion. Each tap has to be
            decoded out of pigment space before its channel is taken. */
@@ -481,6 +534,8 @@ window.initFluidBackdrop = function (canvas, onReady) {
         drop:       program(VERT, DROP),
         ink:        program(VERT, INK),
         vortex:     program(VERT, VORTEX),
+        calm:       program(VERT, CALM),
+        splash:     program(VERT, SPLASH),
         coordInit:  program(VERT, COORD_INIT),
         coordRelax: program(VERT, COORD_RELAX),
         display:    program(VERT, DISPLAY)
@@ -495,15 +550,42 @@ window.initFluidBackdrop = function (canvas, onReady) {
     let introDone = false;
     let dropped = 0;
 
-    // Every cell gets exactly one drop, visited in random order.
-    const dropCells = [];
-    for (let cy = 0; cy < CONF.DROP_ROWS; cy++) {
-        for (let cx = 0; cx < CONF.DROP_COLS; cx++) dropCells.push({ cx, cy });
-    }
-    for (let i = dropCells.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [dropCells[i], dropCells[j]] = [dropCells[j], dropCells[i]];
-    }
+    /* Where the drops land.
+
+       A jittered grid still reads as a grid — the eye finds the rows, and the
+       seams between filled patches line up. Best-candidate sampling instead
+       picks, for each new drop, whichever of several random tries sits
+       furthest from everything placed so far. The result covers as evenly as
+       a grid but has no lattice in it.
+
+       Arrival times are jittered too, so drops do not tick down like a metre. */
+    const dropPlan = (() => {
+        const n = CONF.DROP_COUNT;
+        const ar = canvas.width / canvas.height || 1.6;
+        const pts = [];
+
+        for (let i = 0; i < n; i++) {
+            let best = null;
+            let bestDist = -1;
+            for (let t = 0; t < 14; t++) {
+                const c = { x: Math.random(), y: Math.random() };
+                let d = Infinity;
+                for (const p of pts) {
+                    const dx = (c.x - p.x) * ar;
+                    const dy = c.y - p.y;
+                    d = Math.min(d, dx * dx + dy * dy);
+                }
+                if (!pts.length || d > bestDist) { bestDist = d; best = c; }
+            }
+            pts.push(best);
+        }
+
+        return pts.map((p, i) => ({
+            x: p.x,
+            y: p.y,
+            at: Math.min(0.999, (i + (Math.random() - 0.5) * 0.7) / n)
+        })).sort((a, b) => a.at - b.at);
+    })();
     let simW, simH, dyeW, dyeH;
 
     function use(prog, texelX, texelY) {
@@ -579,6 +661,18 @@ window.initFluidBackdrop = function (canvas, onReady) {
         };
     }
 
+    /* A water drop, not an ink blot: mostly round, with one gentle bulge so it
+       still looks hand-made rather than stamped. Keeping the high-frequency
+       terms near zero is what makes it read as a droplet. */
+    function dropletBlob() {
+        return {
+            seed: Math.random() * 20,
+            soft: 0.42 + Math.random() * 0.22,
+            freq: [pick([1, 2]), 3, 5],
+            amp: [0.05 + Math.random() * 0.09, 0.010 + Math.random() * 0.020, 0.006]
+        };
+    }
+
     function setBlob(u, b, x, y, r, strength) {
         gl.uniform2f(u.u_point, x, y);
         gl.uniform1f(u.u_radius, r);
@@ -598,6 +692,17 @@ window.initFluidBackdrop = function (canvas, onReady) {
        *arrangements*, so pick between four: a jet, a one-way vortex, a
        radial burst, and a shear band. */
     const TAU = Math.PI * 2;
+
+    function calm(cx, cy, radius, amount) {
+        const u = use(progs.calm, velocity.texelX, velocity.texelY);
+        gl.uniform1i(u.u_target, velocity.read.attach(0));
+        gl.uniform2f(u.u_point, cx, cy);
+        gl.uniform1f(u.u_radius, radius);
+        gl.uniform1f(u.u_amount, amount);
+        gl.uniform1f(u.u_aspect, canvas.width / canvas.height);
+        blit(velocity.write);
+        velocity.swap();
+    }
 
     function vortex(cx, cy, radius, strength) {
         const u = use(progs.vortex, velocity.texelX, velocity.texelY);
@@ -779,17 +884,78 @@ window.initFluidBackdrop = function (canvas, onReady) {
         return [[v, t, p], [q, v, p], [p, v, t], [p, q, v], [t, p, v], [v, p, q]][i % 6];
     }
 
+    /* The moment of impact: paint shoved outward, and the water left turning
+       where it struck so the flow itself is changed. */
+    /* punch scales the whole impact. The intro lands many drops in a second,
+       and at full punch their combined stirring homogenises the palette into
+       one flat colour, so those land softly. */
+    function impact(x, y, r, size, punch) {
+        const sp = use(progs.splash, dye.texelX, dye.texelY);
+        gl.uniform1i(sp.u_src, dye.read.attach(0));
+        gl.uniform2f(sp.u_point, x, y);
+        gl.uniform1f(sp.u_radius, r * 1.5);
+        gl.uniform1f(sp.u_strength, r * (0.55 + size * 0.5) * punch);
+        gl.uniform1f(sp.u_aspect, canvas.width / canvas.height);
+        blit(dye.write);
+        dye.swap();
+
+        const ar = canvas.width / canvas.height;
+        const spin = Math.random() < 0.5 ? 1 : -1;
+        const ring = r * 1.15;
+        for (let i = 0; i < 4; i++) {
+            const th = (i / 4) * TAU + Math.random() * 0.6;
+            vortex(x + Math.cos(th) * ring / ar, y + Math.sin(th) * ring,
+                   0.0009 + Math.random() * 0.0022,
+                   (250 + Math.random() * 700) * punch * (i % 2 ? spin : -spin));
+        }
+    }
+
+    /* Drops that are still landing. Drawing one at full size in a single
+       frame is what made them pop into existence; instead each is painted
+       over many frames while it spreads outward from the point of impact. */
+    const landing = [];
+
     function pourInk(now) {
         while (inkQueue.length && inkQueue[0].at <= now) {
             const k = inkQueue.shift();
-            const u = use(progs.ink, dye.texelX, dye.texelY);
-            gl.uniform1i(u.u_dye, dye.read.attach(0));
-            gl.uniform3f(u.u_ink, k.c[0], k.c[1], k.c[2]);
-            setBlob(u, k.blob, k.x, k.y, k.r, 0.95);
+            landing.push({
+                x: k.x, y: k.y, r: k.r, size: k.size, blob: k.blob, punch: 1.0,
+                ink: k.c, born: now, dur: 340, bite: 0.13, hit: false
+            });
+        }
+    }
+
+    function land(now) {
+        for (let i = landing.length - 1; i >= 0; i--) {
+            const d = landing[i];
+
+            if (!d.hit) {
+                d.hit = true;
+                // punch 0 = land without disturbing the water at all.
+                if (d.punch > 0) impact(d.x, d.y, d.r, d.size, d.punch);
+            }
+
+            const a = Math.min(1, (now - d.born) / d.dur);
+            // Fast at first, easing as it settles — the way a drop spreads.
+            const spread = 1 - Math.pow(1 - a, 3);
+            const rr = d.r * (0.26 + 0.74 * spread);
+            const bite = d.bite * (1.4 - 0.7 * a);
+
+            if (d.ink) {
+                const u = use(progs.ink, dye.texelX, dye.texelY);
+                gl.uniform1i(u.u_dye, dye.read.attach(0));
+                gl.uniform3f(u.u_ink, d.ink[0], d.ink[1], d.ink[2]);
+                setBlob(u, d.blob, d.x, d.y, rr, bite);
+            } else {
+                const u = use(progs.drop, dye.texelX, dye.texelY);
+                gl.uniform1i(u.u_dye, dye.read.attach(0));
+                gl.uniform1i(u.u_base, baseFBO.attach(1));
+                setBlob(u, d.blob, d.x, d.y, rr, bite);
+            }
             blit(dye.write);
             dye.swap();
 
-            swirl(k.x, k.y, k.r * 0.4);
+            if (a >= 1) landing.splice(i, 1);
         }
     }
 
@@ -813,6 +979,13 @@ window.initFluidBackdrop = function (canvas, onReady) {
 
     const start = performance.now();
     let last = start;
+
+    /* Timed from the first frame that actually renders, not from setup. A hard
+       reload can stall the first frame past INTRO_SECONDS while shaders
+       compile, and clocking from setup would then place the whole intro in one
+       frame — the canvas appearing already finished. */
+    let introStart = 0;
+
     (function frame(now) {
         const dt = Math.min((now - last) / 1000, 0.0166);
         last = now;
@@ -823,7 +996,9 @@ window.initFluidBackdrop = function (canvas, onReady) {
            the display shader. Injecting a current here made the whole field
            pour. The water is still until the pointer disturbs it. */
 
-        if (ptr.moved) {
+        // The pointer must not stir either, or moving the mouse while the page
+        // loads smears the patches into each other.
+        if (ptr.moved && introDone) {
             ptr.moved = false;
             splat(ptr.x, ptr.y, ptr.px, ptr.py,
                   ptr.dx * CONF.SPLAT_FORCE, ptr.dy * CONF.SPLAT_FORCE,
@@ -835,7 +1010,8 @@ window.initFluidBackdrop = function (canvas, onReady) {
         step(dt);
 
         if (!introDone) {
-            const elapsed = (now - start) / 1000;
+            if (!introStart) introStart = now;
+            const elapsed = (now - introStart) / 1000;
 
             /* Paced by time, but held back by how far the document actually
                got: the drops stall part-way while the page is still loading
@@ -844,42 +1020,46 @@ window.initFluidBackdrop = function (canvas, onReady) {
             const cap = ready === 'complete' ? 1 : ready === 'interactive' ? 0.7 : 0.4;
             const prog = Math.min(elapsed / CONF.INTRO_SECONDS, cap);
 
-            const want = Math.floor(prog * dropCells.length);
-            const aspect = canvas.width / canvas.height;
+            // Also cap how many can land in one frame, so a mid-intro hitch
+            // cannot dump the remainder all at once either.
+            let thisFrame = 0;
+            while (dropped < dropPlan.length && dropPlan[dropped].at <= prog && thisFrame < 2) {
+                thisFrame++;
+                const spot = dropPlan[dropped];
+                const x = spot.x;
+                const y = spot.y;
+                const k = dropped / dropPlan.length;
+                // Later drops run larger so the last gaps close.
+                // Fewer drops means more area each, so the radius scales with
+                // the square root of the drop in count.
+                const r = (0.50 + 0.30 * k) * (0.75 + 0.5 * Math.random());
 
-            // Drops land in a shuffled order over a jittered grid. Stratifying
-            // them this way means the drops alone cover the canvas — no global
-            // flood at the end, which is what read as "it just fills".
-            while (dropped < want) {
-                const cell = dropCells[dropped];
-                const x = (cell.cx + 0.15 + 0.70 * Math.random()) / CONF.DROP_COLS;
-                const y = (cell.cy + 0.15 + 0.70 * Math.random()) / CONF.DROP_ROWS;
-                const k = dropped / dropCells.length;
-                // Fewer, larger drops — the radius has to grow with the cell
-                // size or the gaps between cells never close.
-                const r = (0.51 + 0.18 * k) * (0.9 + 0.2 * Math.random());
-
-                const d = use(progs.drop, dye.texelX, dye.texelY);
-                gl.uniform1i(d.u_dye, dye.read.attach(0));
-                gl.uniform1i(d.u_base, baseFBO.attach(1));
-                setBlob(d, randomBlob(), x, y, r, 0.9);
-                blit(dye.write);
-                dye.swap();
-
-                // Intro drops are far bigger than the ink drops, so scale the
-                // spread down — at r * 0.5 the vortex ring spans the screen
-                // instead of curling inside the drop.
-                swirl(x, y, r * 0.10);
+                // Queued the same way as a logo drop, so it lands and spreads
+                // over time instead of appearing whole.
+                // A high bite so colour arrives WITH the drop: the spreading
+                // radius carries the motion, not a slow fade-in.
+                /* No impact during the intro. Every drop uncovers the same
+                   palette, so with the water held still their edges line up
+                   exactly and there is no colour interference at all — the
+                   canvas is simply revealed patch by patch. Stirring is what
+                   dragged one drop's colour into the next. */
+                landing.push({
+                    x, y, r, size: k, blob: randomBlob(), punch: 0,
+                    ink: null, born: now, dur: 300, bite: 0.60, hit: false
+                });
                 dropped++;
             }
 
-            if (prog >= 1 && dropped >= dropCells.length) {
+            // Wait for the last drops to finish spreading, or the canvas is
+            // revealed while it still has gaps.
+            if (prog >= 1 && dropped >= dropPlan.length && landing.length === 0) {
                 introDone = true;
                 if (onReady) onReady();
             }
         }
 
         pourInk(now);
+        land(now);
         render(t, window.__bgEnergy || 0);
         requestAnimationFrame(frame);
     })(last);
@@ -918,14 +1098,18 @@ window.initFluidBackdrop = function (canvas, onReady) {
            the water and the reseed pass dissolves it within a few seconds. */
         ink() {
             if (!introDone) return;
+            // 0 = fine drizzle, 1 = fat drop. Drives the blot size, the ring's
+            // wavelength, how fast it spreads and how long it lasts.
+            const size = Math.random();
             inkQueue.push({
                 at: performance.now(),
                 x: 0.10 + Math.random() * 0.80,
                 y: 0.14 + Math.random() * 0.72,
+                size,
                 // 0.5x to 1.5x of the base size.
-                r: CONF.INK_RADIUS * (0.5 + Math.random()),
+                r: CONF.INK_RADIUS * (0.5 + size),
                 c: hsvToRgb(Math.random(), 0.85, 0.90),
-                blob: randomBlob()
+                blob: dropletBlob()
             });
         }
     };
