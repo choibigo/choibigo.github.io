@@ -575,8 +575,9 @@ body:not([data-view="index"]) .close-btn {
     .index-list { flex-direction: row; gap: 1.3em; flex-wrap: wrap; }
 
     .page { padding-left: 0; padding-top: 5.5em; }
-    /* Clear the fixed music / close buttons at the bottom. */
-    .page-scroll { padding-right: 1.6em; padding-bottom: 6.5em; }
+    /* Right padding clears the scroll rail; match it on the left so centred
+       content sits on the viewport's centre, not offset from it. */
+    .page-scroll { padding-left: 1.6em; padding-right: 1.6em; padding-bottom: 6.5em; }
 
     /* The nav is a row across the top here, so the close button moves out
        from under it — and the rail lifts clear of the button. */
@@ -589,12 +590,14 @@ body:not([data-view="index"]) .close-btn {
     .cv li { flex-direction: column; gap: 0.5em; }
     .cv-date { width: auto; }
 
+    /* Contact reads better centred once the panel is full-width. */
+    .contact { align-items: center; }
+    .contact-body { align-items: center; text-align: center; }
+    .socials { justify-content: center; }
+
     #hover-img { display: none !important; }
 }
 
-@media (max-width: 520px) {
-    .contact { flex-direction: column; align-items: flex-start; }
-}
 
 /* Touch devices: no custom cursor */
 @media (hover: none) and (pointer: coarse) {
