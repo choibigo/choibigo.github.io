@@ -247,12 +247,10 @@ body:not([data-view="index"]) .close-btn {
 
 .scroll-thumb {
     position: absolute;
-    left: -1.5px;
-    width: 5px;
+    left: 0;
+    width: 2px;
     min-height: 26px;
-    border-radius: 3px;
-    background: var(--ink);
-    box-shadow: 0 0 14px rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.55);
 }
 
 
