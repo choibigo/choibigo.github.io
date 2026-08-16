@@ -1,595 +1,599 @@
-// 0. Reset Scroll Position on Reload
-if ('scrollRestoration' in history) {
-    history.scrollRestoration = 'manual';
-}
-window.scrollTo(0, 0);
+/* ============================================================
+   CBIGO — fixed-viewport index site
+   1. Refraction backdrop (WebGL, 2D fallback)
+   2. Cursor
+   3. Router
+   4. Preloader
+   5. Works hover preview
+   6. Music
+   ============================================================ */
 
-// Square custom scrollbar (native UI differs between browsers/OSes)
-const customScrollbar = document.querySelector('.custom-scrollbar');
-const customScrollbarThumb = document.querySelector('.custom-scrollbar-thumb');
-let scrollbarThumbHeight = 0;
+/* ------------------------------------------------------------
+   1. Refraction backdrop
+   ------------------------------------------------------------ */
 
-function updateCustomScrollbar() {
-    const viewportHeight = window.innerHeight;
-    const pageHeight = Math.max(
-        document.documentElement.scrollHeight,
-        document.body.scrollHeight
-    );
-    const maxScroll = pageHeight - viewportHeight;
+const VERT = `
+attribute vec2 a_pos;
+void main() { gl_Position = vec4(a_pos, 0.0, 1.0); }
+`;
 
-    if (maxScroll <= 0) {
-        customScrollbar.hidden = true;
-        return;
-    }
+const FRAG = `
+precision highp float;
 
-    customScrollbar.hidden = false;
-    scrollbarThumbHeight = Math.max(40, (viewportHeight / pageHeight) * viewportHeight);
-    const maxThumbTop = viewportHeight - scrollbarThumbHeight;
-    const thumbTop = (window.scrollY / maxScroll) * maxThumbTop;
+#define TRAIL 14
 
-    customScrollbarThumb.style.height = `${scrollbarThumbHeight}px`;
-    customScrollbarThumb.style.transform = `translateY(${thumbTop}px)`;
-}
+uniform vec2  u_res;
+uniform float u_time;
+uniform float u_energy;
+uniform vec2  u_trail[TRAIL];   /* recent pointer path, newest first */
+uniform vec2  u_vel[TRAIL];     /* how the pointer was moving at each sample */
+uniform float u_age[TRAIL];     /* 1 = fresh, 0 = fully relaxed */
 
-let isDraggingScrollbar = false;
-let scrollbarDragStartY = 0;
-let scrollbarDragStartScroll = 0;
-
-customScrollbarThumb.addEventListener('pointerdown', (event) => {
-    isDraggingScrollbar = true;
-    scrollbarDragStartY = event.clientY;
-    scrollbarDragStartScroll = window.scrollY;
-    customScrollbarThumb.setPointerCapture(event.pointerId);
-    event.preventDefault();
-});
-
-customScrollbarThumb.addEventListener('pointermove', (event) => {
-    if (!isDraggingScrollbar) return;
-
-    const pageHeight = Math.max(
-        document.documentElement.scrollHeight,
-        document.body.scrollHeight
-    );
-    const maxScroll = pageHeight - window.innerHeight;
-    const maxThumbTop = window.innerHeight - scrollbarThumbHeight;
-
-    if (maxThumbTop > 0) {
-        const scrollDelta = (event.clientY - scrollbarDragStartY) * (maxScroll / maxThumbTop);
-        window.scrollTo(0, scrollbarDragStartScroll + scrollDelta);
-    }
-    event.preventDefault();
-});
-
-function stopScrollbarDrag(event) {
-    if (!isDraggingScrollbar) return;
-    isDraggingScrollbar = false;
-    if (customScrollbarThumb.hasPointerCapture(event.pointerId)) {
-        customScrollbarThumb.releasePointerCapture(event.pointerId);
-    }
+float hash(vec2 p) {
+    p = fract(p * vec2(123.34, 456.21));
+    p += dot(p, p + 45.32);
+    return fract(p.x * p.y);
 }
 
-customScrollbarThumb.addEventListener('pointerup', stopScrollbarDrag);
-customScrollbarThumb.addEventListener('pointercancel', stopScrollbarDrag);
+float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash(i),                hash(i + vec2(1.0, 0.0)), u.x),
+               mix(hash(i + vec2(0.0,1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+}
 
-customScrollbar.addEventListener('pointerdown', (event) => {
-    if (event.target === customScrollbarThumb) return;
-    const maxThumbTop = window.innerHeight - scrollbarThumbHeight;
-    if (maxThumbTop <= 0) return;
+float fbm(vec2 p) {
+    float v = 0.0;
+    float a = 0.5;
+    mat2 rot = mat2(0.80, 0.60, -0.60, 0.80);
+    for (int i = 0; i < 5; i++) {
+        v += a * noise(p);
+        p = rot * p * 2.02;
+        a *= 0.5;
+    }
+    return v;
+}
 
-    const targetThumbTop = Math.max(
-        0,
-        Math.min(maxThumbTop, event.clientY - (scrollbarThumbHeight / 2))
-    );
-    const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-    window.scrollTo(0, (targetThumbTop / maxThumbTop) * maxScroll);
-});
+/* The pointer bends the direction of the flow — it does not raise a dome.
+   Each sample drags the stream along the way the pointer was travelling and
+   adds a little swirl around it; both fade as the sample ages. */
+vec2 flowNudge(vec2 p) {
+    vec2 nudge = vec2(0.0);
+    for (int i = 0; i < TRAIL; i++) {
+        vec2 d = p - u_trail[i];
+        float f = u_age[i] * exp(-dot(d, d) * 6.0);
+        vec2 swirl = vec2(-d.y, d.x);
+        nudge += (u_vel[i] * 2.4 + swirl * 0.55) * f;
+    }
+    return nudge * (1.0 / float(TRAIL)) * 1.5;
+}
 
-window.addEventListener('scroll', updateCustomScrollbar, { passive: true });
-window.addEventListener('resize', updateCustomScrollbar);
-window.addEventListener('load', updateCustomScrollbar);
-new ResizeObserver(updateCustomScrollbar).observe(document.documentElement);
-updateCustomScrollbar();
+/* Height field of the glass sheet: fbm warped by fbm, twice.
+   Keeps its own slow current; the pointer only steers it. */
+float glassHeight(vec2 p, float t) {
+    vec2 q = vec2(fbm(p + vec2(0.0, t * 0.12)),
+                  fbm(p + vec2(3.7, 1.3) - t * 0.09));
+    vec2 r = vec2(fbm(p + 2.4 * q + vec2(1.7, 9.2) + t * 0.10),
+                  fbm(p + 2.4 * q + vec2(8.3, 2.8) - t * 0.07));
+    return fbm(p + 2.6 * r);
+}
 
-// 1. Custom Cursor & Magnetic effect
+/* The colour field sitting behind the glass, drifting on its own current. */
+vec3 behind(vec2 uv, float t) {
+    vec3 col = vec3(0.014, 0.018, 0.036);
+
+    vec2 c1 = vec2(0.24 + sin(t * 0.42) * 0.10, 0.30 + cos(t * 0.35) * 0.09);
+    vec2 c2 = vec2(0.78 + cos(t * 0.31) * 0.09, 0.36 + sin(t * 0.44) * 0.10);
+    vec2 c3 = vec2(0.52 + sin(t * 0.27) * 0.12, 0.80 + cos(t * 0.38) * 0.08);
+
+    float a = smoothstep(0.62, 0.0, length((uv - c1) * vec2(1.5, 1.0)));
+    float b = smoothstep(0.58, 0.0, length((uv - c2) * vec2(1.5, 1.0)));
+    float c = smoothstep(0.66, 0.0, length((uv - c3) * vec2(1.5, 1.0)));
+
+    col += a * vec3(0.42, 0.06, 0.72);
+    col += b * vec3(0.00, 0.46, 0.60);
+    col += c * vec3(0.50, 0.04, 0.24);
+    return col;
+}
+
+void main() {
+    vec2 uv = gl_FragCoord.xy / u_res.xy;
+    float m = min(u_res.x, u_res.y);
+    vec2 p  = (gl_FragCoord.xy - 0.5 * u_res.xy) / m;
+    float t = u_time * 0.09;
+
+    /* The pointer only steers the current — it is folded into the domain,
+       never into the refraction offset, so no dome forms under the cursor. */
+    vec2 sp = p * 1.7 + flowNudge(p);
+
+    /* Surface normal from the height field. */
+    float e  = 2.0 / m;
+    float h  = glassHeight(sp, t);
+    float hx = glassHeight(sp + vec2(e, 0.0), t);
+    float hy = glassHeight(sp + vec2(0.0, e), t);
+    vec3  n  = normalize(vec3(-(hx - h) / e * 0.05, -(hy - h) / e * 0.05, 1.0));
+
+    /* Refract, with per-channel dispersion. */
+    vec2 off = n.xy * (0.17 + u_energy * 0.06);
+    vec3 col;
+    col.r = behind(uv + off * 1.00, t).r;
+    col.g = behind(uv + off * 1.11, t).g;
+    col.b = behind(uv + off * 1.24, t).b;
+
+    /* Specular glint off the ridges. */
+    vec3 L = normalize(vec3(0.45, 0.80, 0.70));
+    col += pow(max(dot(n, L), 0.0), 40.0) * 0.42;
+
+    /* Fresnel rim. */
+    col += pow(1.0 - n.z, 2.2) * vec3(0.34, 0.42, 0.62) * 0.62;
+
+    /* Caustic banding. */
+    col += pow(abs(sin(h * 9.0 + t * 1.5)), 12.0)
+         * vec3(0.52, 0.60, 0.86) * (0.26 + u_energy * 0.3);
+
+    /* Vignette + gamma. */
+    col *= 1.0 - 0.42 * pow(length(p) * 0.78, 2.0);
+    col = pow(max(col, 0.0), vec3(0.88));
+
+    gl_FragColor = vec4(col, 1.0);
+}
+`;
+
+let backdropCanvas = document.getElementById('backdrop-canvas');
+let audioEnergy = 0;
+
+const TRAIL = 14;                                   // must match #define TRAIL
+const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
+
+/* Screen px -> the shader's aspect-corrected space:
+   p = (fragCoord - 0.5 * res) / min(res), with Y pointing up. */
+function toShaderSpace(cx, cy) {
+    const w = window.innerWidth, h = window.innerHeight;
+    const m = Math.min(w, h);
+    return { x: (cx - w / 2) / m, y: (h / 2 - cy) / m };
+}
+
+function compile(gl, type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+        console.warn('shader:', gl.getShaderInfoLog(s));
+        gl.deleteShader(s);
+        return null;
+    }
+    return s;
+}
+
+function initWebGLBackdrop() {
+    const gl = backdropCanvas.getContext('webgl', {
+        antialias: false,
+        alpha: false,
+        powerPreference: 'high-performance'
+    });
+    if (!gl) return false;
+
+    const vs = compile(gl, gl.VERTEX_SHADER, VERT);
+    const fs = compile(gl, gl.FRAGMENT_SHADER, FRAG);
+    if (!vs || !fs) return false;
+
+    const prog = gl.createProgram();
+    gl.attachShader(prog, vs);
+    gl.attachShader(prog, fs);
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+        console.warn('link:', gl.getProgramInfoLog(prog));
+        return false;
+    }
+    gl.useProgram(prog);
+
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(prog, 'a_pos');
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+    const uRes    = gl.getUniformLocation(prog, 'u_res');
+    const uTime   = gl.getUniformLocation(prog, 'u_time');
+    const uEnergy = gl.getUniformLocation(prog, 'u_energy');
+    const uTrail  = gl.getUniformLocation(prog, 'u_trail[0]') || gl.getUniformLocation(prog, 'u_trail');
+    const uVel    = gl.getUniformLocation(prog, 'u_vel[0]')   || gl.getUniformLocation(prog, 'u_vel');
+    const uAge    = gl.getUniformLocation(prog, 'u_age[0]')   || gl.getUniformLocation(prog, 'u_age');
+
+    function resize() {
+        // Cap DPR — this shader is fill-rate bound.
+        const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+        const w = Math.floor(window.innerWidth * dpr);
+        const h = Math.floor(window.innerHeight * dpr);
+        if (backdropCanvas.width !== w || backdropCanvas.height !== h) {
+            backdropCanvas.width = w;
+            backdropCanvas.height = h;
+            gl.viewport(0, 0, w, h);
+        }
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    const trailPos = new Float32Array(TRAIL * 2);
+    const trailVel = new Float32Array(TRAIL * 2);
+    const trailAge = new Float32Array(TRAIL);
+    let head = 0;
+    let lastX = 0, lastY = 0;
+
+    const start = performance.now();
+    (function frame(now) {
+        const t = (now - start) * 0.001;
+
+        // While a panel is open the pointer belongs to the content, so it
+        // stops stirring the water and the existing ripples simply settle.
+        const panelOpen = document.body.dataset.view !== 'index';
+
+        // Viscous follow — the flow lags behind the cursor.
+        pointer.x += (pointer.tx - pointer.x) * 0.16;
+        pointer.y += (pointer.ty - pointer.y) * 0.16;
+
+        const vx = pointer.x - lastX;
+        const vy = pointer.y - lastY;
+        lastX = pointer.x;
+        lastY = pointer.y;
+
+        // Existing disturbances relax back into the ambient current.
+        for (let i = 0; i < TRAIL; i++) trailAge[i] *= panelOpen ? 0.90 : 0.955;
+
+        if (!panelOpen) {
+            // Deposit a sample; only real movement bends the flow, so a resting
+            // cursor leaves the water undisturbed.
+            head = (head + 1) % TRAIL;
+            trailPos[head * 2] = pointer.x;
+            trailPos[head * 2 + 1] = pointer.y;
+            trailVel[head * 2] = vx;
+            trailVel[head * 2 + 1] = vy;
+            trailAge[head] = Math.min(1, Math.hypot(vx, vy) * 26);
+        }
+
+        gl.uniform2f(uRes, backdropCanvas.width, backdropCanvas.height);
+        gl.uniform1f(uTime, t);
+        gl.uniform1f(uEnergy, audioEnergy);
+        gl.uniform2fv(uTrail, trailPos);
+        gl.uniform2fv(uVel, trailVel);
+        gl.uniform1fv(uAge, trailAge);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+        requestAnimationFrame(frame);
+    })(start);
+
+    return true;
+}
+
+/* Soft animated-gradient fallback when WebGL is unavailable. */
+function initCanvasBackdrop() {
+    const ctx = backdropCanvas.getContext('2d');
+    let w = 0, h = 0;
+
+    function resize() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+        w = window.innerWidth;
+        h = window.innerHeight;
+        backdropCanvas.width = Math.floor(w * dpr);
+        backdropCanvas.height = Math.floor(h * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    const blobs = [
+        { c: [107, 15, 184], ax: 0.24, ay: 0.30, r: 0.62, s: 0.42 },
+        { c: [0, 117, 153],  ax: 0.78, ay: 0.36, r: 0.58, s: 0.31 },
+        { c: [128, 10, 61],  ax: 0.52, ay: 0.80, r: 0.66, s: 0.27 }
+    ];
+
+    (function frame(now) {
+        const t = now * 0.0002;
+        ctx.fillStyle = '#05060a';
+        ctx.fillRect(0, 0, w, h);
+        ctx.globalCompositeOperation = 'lighter';
+        blobs.forEach((b, i) => {
+            const x = w * (b.ax + Math.sin(t * b.s * 4 + i) * 0.10);
+            const y = h * (b.ay + Math.cos(t * b.s * 3.4 + i) * 0.09);
+            const rad = Math.max(w, h) * b.r;
+            const g = ctx.createRadialGradient(x, y, 0, x, y, rad);
+            g.addColorStop(0, `rgba(${b.c.join(',')},0.5)`);
+            g.addColorStop(0.5, `rgba(${b.c.join(',')},0.12)`);
+            g.addColorStop(1, 'rgba(5,6,10,0)');
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.arc(x, y, rad, 0, Math.PI * 2);
+            ctx.fill();
+        });
+        ctx.globalCompositeOperation = 'source-over';
+        requestAnimationFrame(frame);
+    })(0);
+}
+
+/* Prefer the real fluid simulation; fall back to the procedural refraction
+   shader, then to a plain animated gradient. */
+let fluid = null;
+try { fluid = window.initFluidBackdrop(backdropCanvas); } catch (e) { fluid = null; }
+
+if (!fluid) {
+    // A canvas keeps its first context type, so hand the fallback a fresh one.
+    const fresh = backdropCanvas.cloneNode(false);
+    backdropCanvas.replaceWith(fresh);
+    backdropCanvas = fresh;
+    if (!initWebGLBackdrop()) initCanvasBackdrop();
+}
+
+/* ------------------------------------------------------------
+   2. Cursor
+   ------------------------------------------------------------ */
+
 const cursorDot = document.querySelector('.cursor-dot');
 const cursorRing = document.querySelector('.cursor-ring');
-let mouseX = 0, mouseY = 0, ringX = 0, ringY = 0;
+let mx = window.innerWidth / 2, my = window.innerHeight / 2;
+let rx = mx, ry = my;
 
 window.addEventListener('mousemove', (e) => {
-    mouseX = e.clientX; mouseY = e.clientY;
-    cursorDot.style.left = `${mouseX}px`;
-    cursorDot.style.top = `${mouseY}px`;
+    mx = e.clientX;
+    my = e.clientY;
+    cursorDot.style.transform = `translate(${mx}px, ${my}px) translate(-50%, -50%)`;
+
+    const s = toShaderSpace(mx, my);
+    pointer.tx = s.x;
+    pointer.ty = s.y;
+    if (fluid) fluid.setPointer(mx, my);
 });
 
-function animateCursor() {
-    ringX += (mouseX - ringX) * 0.15;
-    ringY += (mouseY - ringY) * 0.15;
-    cursorRing.style.left = `${ringX}px`;
-    cursorRing.style.top = `${ringY}px`;
+// Touch drags stir the fluid too.
+window.addEventListener('touchmove', (e) => {
+    const t = e.touches[0];
+    if (!t) return;
+    const s = toShaderSpace(t.clientX, t.clientY);
+    pointer.tx = s.x;
+    pointer.ty = s.y;
+    if (fluid) fluid.setPointer(t.clientX, t.clientY);
+}, { passive: true });
+
+(function animateCursor() {
+    rx += (mx - rx) * 0.14;
+    ry += (my - ry) * 0.14;
+    cursorRing.style.transform = `translate(${rx}px, ${ry}px) translate(-50%, -50%)`;
     requestAnimationFrame(animateCursor);
-}
-animateCursor();
+})();
 
-document.querySelectorAll('.hover-target').forEach(el => {
-    el.addEventListener('mouseenter', () => document.body.classList.add('hovering'));
-    el.addEventListener('mouseleave', () => document.body.classList.remove('hovering'));
+document.addEventListener('mouseover', (e) => {
+    if (e.target.closest('.hover-target')) document.body.classList.add('hovering');
+});
+document.addEventListener('mouseout', (e) => {
+    if (e.target.closest('.hover-target')) document.body.classList.remove('hovering');
 });
 
-// 1-1. Organic 3D Point Cloud Background
-const particleCanvas = document.getElementById('particle-bg');
-const particleCtx = particleCanvas.getContext('2d', { alpha: true });
-let particleW = 0;
-let particleH = 0;
-let particleDpr = 1;
-let scrollHue = 0;
-let audioEnergy = 0;
-let pointClouds = [];
-let ambientPoints = [];
+/* ------------------------------------------------------------
+   3. Router — the index swaps content in place, never scrolls
+   ------------------------------------------------------------ */
 
-const cloudPresets = [
-    { color: [189, 0, 255], phase: 0.2, radius: 0.36, speed: 0.34, anchorX: 0.20, anchorY: 0.24, travelX: 0.16, travelY: 0.18 },
-    { color: [0, 240, 255], phase: 2.4, radius: 0.32, speed: 0.28, anchorX: 0.78, anchorY: 0.34, travelX: 0.15, travelY: 0.16 },
-    { color: [255, 0, 85], phase: 4.6, radius: 0.42, speed: 0.23, anchorX: 0.48, anchorY: 0.74, travelX: 0.18, travelY: 0.15 }
-];
+const PAGES = ['works', 'about', 'research', 'contact'];
+const pageEls = {};
+PAGES.forEach(p => { pageEls[p] = document.getElementById(`page-${p}`); });
+const navLinks = document.querySelectorAll('.index-list a');
 
-function makeCloudPoints(count, seed) {
-    const points = [];
-    for (let i = 0; i < count; i++) {
-        const u = Math.random();
-        const v = Math.random();
-        const theta = Math.acos(2 * u - 1);
-        const phi = Math.PI * 2 * v;
-        const shellBias = Math.random();
-        const radius = shellBias > 0.38
-            ? 0.82 + Math.random() * 0.22
-            : Math.pow(Math.random(), 0.42) * 0.82;
+function showPage(name, push = true) {
+    const target = PAGES.includes(name) ? name : 'index';
 
-        points.push({
-            theta,
-            phi,
-            radius,
-            seed: seed + Math.random() * 20,
-            orbit: (Math.random() - 0.5) * 0.36,
-            driftSpeed: 0.55 + Math.random() * 1.25,
-            driftAmp: 0.025 + Math.random() * 0.08,
-            depthPulse: Math.random() * Math.PI * 2,
-            sparkle: Math.random() > 0.975
-        });
-    }
-    return points;
-}
-
-function makeAmbientPoints(count) {
-    return Array.from({ length: count }, (_, index) => ({
-        x: Math.random(),
-        y: Math.random(),
-        z: Math.random(),
-        size: 0.45 + Math.random() * 1.9,
-        speed: 0.012 + Math.random() * 0.032,
-        phase: Math.random() * Math.PI * 2,
-        color: cloudPresets[index % cloudPresets.length].color
-    }));
-}
-
-function resizeParticleCanvas() {
-    particleDpr = Math.min(window.devicePixelRatio || 1, 2);
-    particleW = window.innerWidth;
-    particleH = window.innerHeight;
-    particleCanvas.width = Math.floor(particleW * particleDpr);
-    particleCanvas.height = Math.floor(particleH * particleDpr);
-    particleCanvas.style.width = `${particleW}px`;
-    particleCanvas.style.height = `${particleH}px`;
-    particleCtx.setTransform(particleDpr, 0, 0, particleDpr, 0, 0);
-
-    const pointCount = particleW < 700 ? 980 : 1680;
-    pointClouds = cloudPresets.map((preset, index) => ({
-        ...preset,
-        points: makeCloudPoints(pointCount + index * 240, index * 7.7)
-    }));
-    ambientPoints = makeAmbientPoints(particleW < 700 ? 90 : 180);
-}
-
-function projectPoint(point, cloud, time, scaleBase) {
-    const localTheta = point.theta + Math.sin(time * point.driftSpeed + point.seed) * 0.11;
-    const localPhi = point.phi + time * point.orbit + Math.cos(time * (point.driftSpeed * 0.8) + point.seed) * 0.16;
-    const wobble =
-        1
-        + Math.sin(localTheta * 3.1 + time * 1.05 + point.seed) * 0.12
-        + Math.cos(localPhi * 2.4 - time * 0.82 + cloud.phase) * 0.10
-        + Math.sin((localTheta + localPhi) * 4.2 + time * 0.48) * 0.06
-        + Math.sin(time * point.driftSpeed + point.depthPulse) * point.driftAmp;
-
-    const r = point.radius * wobble * scaleBase;
-    let x = Math.sin(localTheta) * Math.cos(localPhi) * r;
-    let y = Math.sin(localTheta) * Math.sin(localPhi) * r;
-    let z = Math.cos(localTheta) * r;
-
-    x += Math.sin(time * point.driftSpeed + point.seed * 1.7) * scaleBase * point.driftAmp;
-    y += Math.cos(time * (point.driftSpeed * 0.7) + point.seed) * scaleBase * point.driftAmp;
-    z += Math.sin(time * (point.driftSpeed * 0.5) + point.depthPulse) * scaleBase * point.driftAmp * 1.4;
-
-    const rotY = time * cloud.speed + cloud.phase;
-    const rotX = time * 0.14 + cloud.phase * 0.5;
-    const cy = Math.cos(rotY);
-    const sy = Math.sin(rotY);
-    const cx = Math.cos(rotX);
-    const sx = Math.sin(rotX);
-
-    const x1 = x * cy - z * sy;
-    const z1 = x * sy + z * cy;
-    const y1 = y * cx - z1 * sx;
-    const z2 = y * sx + z1 * cx;
-    return { x: x1, y: y1, z: z2 };
-}
-
-function drawAmbientField(time) {
-    particleCtx.save();
-    particleCtx.globalCompositeOperation = 'lighter';
-    ambientPoints.forEach(point => {
-        const driftX = Math.sin(time * point.speed + point.phase) * particleW * 0.035;
-        const driftY = Math.cos(time * point.speed * 1.7 + point.phase) * particleH * 0.045;
-        const x = ((point.x * particleW + driftX + particleW) % particleW);
-        const y = ((point.y * particleH + driftY + particleH) % particleH);
-        const alpha = 0.026 + point.z * 0.045;
-        particleCtx.fillStyle = `rgba(${point.color.join(',')}, ${alpha})`;
-        particleCtx.beginPath();
-        particleCtx.arc(x, y, point.size, 0, Math.PI * 2);
-        particleCtx.fill();
-    });
-    particleCtx.restore();
-}
-
-function drawMovingColorWash(centers, time) {
-    particleCtx.save();
-    particleCtx.globalCompositeOperation = 'lighter';
-    centers.forEach((center, index) => {
-        const reach = Math.max(particleW, particleH) * (0.58 + index * 0.08);
-        const breathing = 1 + Math.sin(time * (0.72 + index * 0.12) + index) * 0.08;
-        const gradient = particleCtx.createRadialGradient(
-            center.x,
-            center.y,
-            0,
-            center.x,
-            center.y,
-            reach * breathing
-        );
-        gradient.addColorStop(0, `rgba(${center.color.join(',')}, ${0.12 + audioEnergy * 0.08})`);
-        gradient.addColorStop(0.38, `rgba(${center.color.join(',')}, ${0.052 + audioEnergy * 0.04})`);
-        gradient.addColorStop(0.72, `rgba(${center.color.join(',')}, 0.015)`);
-        gradient.addColorStop(1, 'rgba(3,3,3,0)');
-        particleCtx.fillStyle = gradient;
-        particleCtx.beginPath();
-        particleCtx.arc(center.x, center.y, reach * breathing, 0, Math.PI * 2);
-        particleCtx.fill();
-    });
-
-    const veil = particleCtx.createLinearGradient(
-        particleW * (0.1 + Math.sin(time * 0.3) * 0.08),
-        0,
-        particleW * (0.9 + Math.cos(time * 0.24) * 0.08),
-        particleH
-    );
-    veil.addColorStop(0, 'rgba(255,255,255,0)');
-    veil.addColorStop(0.5, 'rgba(255,255,255,0.025)');
-    veil.addColorStop(1, 'rgba(255,255,255,0)');
-    particleCtx.fillStyle = veil;
-    particleCtx.fillRect(0, 0, particleW, particleH);
-    particleCtx.restore();
-}
-
-function drawCloudRibbons(centers, time) {
-    particleCtx.save();
-    particleCtx.globalCompositeOperation = 'lighter';
-    for (let i = 0; i < centers.length; i++) {
-        const a = centers[i];
-        const b = centers[(i + 1) % centers.length];
-        const gradient = particleCtx.createLinearGradient(a.x, a.y, b.x, b.y);
-        gradient.addColorStop(0, `rgba(${a.color.join(',')}, 0.09)`);
-        gradient.addColorStop(0.5, 'rgba(255,255,255,0.045)');
-        gradient.addColorStop(1, `rgba(${b.color.join(',')}, 0.09)`);
-        particleCtx.strokeStyle = gradient;
-        particleCtx.lineWidth = 1.2 + audioEnergy * 3.4;
-        particleCtx.beginPath();
-        particleCtx.moveTo(a.x, a.y);
-        particleCtx.bezierCurveTo(
-            particleW * (0.34 + Math.sin(time + i) * 0.08),
-            particleH * (0.22 + Math.cos(time * 0.7 + i) * 0.22),
-            particleW * (0.66 + Math.cos(time * 0.8 + i) * 0.08),
-            particleH * (0.76 + Math.sin(time * 0.6 + i) * 0.18),
-            b.x,
-            b.y
-        );
-        particleCtx.stroke();
-    }
-    particleCtx.restore();
-}
-
-function drawParticleBackground(now) {
-    const time = now * 0.00042;
-
-    particleCtx.clearRect(0, 0, particleW, particleH);
-    particleCtx.globalCompositeOperation = 'source-over';
-    particleCtx.fillStyle = '#030303';
-    particleCtx.fillRect(0, 0, particleW, particleH);
-
-    const centers = pointClouds.map((cloud, index) => {
-        const t = time + cloud.phase;
-        return {
-            x: particleW * (
-                cloud.anchorX
-                + Math.sin(t * (0.95 + index * 0.08)) * cloud.travelX
-                + Math.cos(t * 0.41 + cloud.phase) * cloud.travelX * 0.55
-            ),
-            y: particleH * (
-                cloud.anchorY
-                + Math.cos(t * (0.78 + index * 0.07)) * cloud.travelY
-                + Math.sin(t * 0.49 + cloud.phase * 1.4) * cloud.travelY * 0.52
-            ),
-            color: cloud.color
-        };
-    });
-
-    drawMovingColorWash(centers, time);
-    drawAmbientField(time);
-    drawCloudRibbons(centers, time);
-
-    pointClouds.forEach((cloud, cloudIndex) => {
-        const center = centers[cloudIndex];
-        const baseSize = Math.max(particleW, particleH) * cloud.radius * (1 + audioEnergy * 0.12);
-        const halo = particleCtx.createRadialGradient(center.x, center.y, 0, center.x, center.y, baseSize * 1.08);
-        halo.addColorStop(0, `rgba(${cloud.color.join(',')}, ${0.055 + audioEnergy * 0.07})`);
-        halo.addColorStop(0.48, `rgba(${cloud.color.join(',')}, ${0.026 + audioEnergy * 0.026})`);
-        halo.addColorStop(1, 'rgba(3,3,3,0)');
-        particleCtx.fillStyle = halo;
-        particleCtx.beginPath();
-        particleCtx.arc(center.x, center.y, baseSize * 1.08, 0, Math.PI * 2);
-        particleCtx.fill();
-
-        particleCtx.globalCompositeOperation = 'lighter';
-        cloud.points.forEach(point => {
-            const p = projectPoint(point, cloud, time, baseSize);
-            const perspective = 960 / (960 + p.z);
-            const x = center.x + p.x * perspective;
-            const y = center.y + p.y * perspective * 0.72;
-
-            if (x < -40 || x > particleW + 40 || y < -40 || y > particleH + 40) return;
-
-            const depth = Math.max(0, Math.min(1, (p.z / baseSize + 1) * 0.5));
-            const alpha = (0.022 + depth * 0.16) * (0.85 + audioEnergy * 1.05);
-            const size = (0.32 + depth * 1.25 + (point.sparkle ? 0.95 : 0)) * (1 + audioEnergy * 0.72);
-            const whiteMix = point.sparkle ? 92 : 14 + depth * 42;
-            const r = Math.min(255, cloud.color[0] + whiteMix);
-            const g = Math.min(255, cloud.color[1] + whiteMix);
-            const b = Math.min(255, cloud.color[2] + whiteMix);
-
-            particleCtx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
-            particleCtx.beginPath();
-            particleCtx.arc(x, y, size, 0, Math.PI * 2);
-            particleCtx.fill();
-        });
-    });
-
-    requestAnimationFrame(drawParticleBackground);
-}
-
-resizeParticleCanvas();
-window.addEventListener('resize', resizeParticleCanvas);
-requestAnimationFrame(drawParticleBackground);
-
-// 2. Fullscreen Preloader Logic
-window.addEventListener('load', () => {
-    let count = 0;
-    const counterEl = document.getElementById('counter');
-    const preloader = document.getElementById('preloader');
-    
-    let interval = setInterval(() => {
-        count += Math.floor(Math.random() * 8) + 2;
-        if(count >= 100) {
-            count = 100;
-            clearInterval(interval);
-            counterEl.innerText = count + '%';
-            
-            setTimeout(() => {
-                preloader.style.opacity = '0';
-                preloader.style.pointerEvents = 'none';
-                document.documentElement.classList.remove('is-loading');
-                document.body.classList.remove('is-loading');
-                
-                setTimeout(() => {
-                    typeEffect(); 
-                    window.dispatchEvent(new Event('scroll'));
-                }, 500);
-            }, 500);
-        } else {
-            counterEl.innerText = count + '%';
-        }
-    }, 30);
-});
-
-// 3. Typing Effect
-const typeEl = document.getElementById('typing-text');
-const words = ["Robotics", "Computer Vision", "Bimanual Manipulation", "Task Planning", "Everything New"];
-let wIdx = 0, cIdx = 0, isDeleting = false;
-
-function typeEffect() {
-    const current = words[wIdx];
-    if(isDeleting) {
-        typeEl.innerText = current.substring(0, cIdx - 1);
-        cIdx--;
-    } else {
-        typeEl.innerText = current.substring(0, cIdx + 1);
-        cIdx++;
-    }
-
-    let speed = isDeleting ? 40 : 100;
-    if(!isDeleting && cIdx === current.length) { speed = 2000; isDeleting = true; }
-    else if(isDeleting && cIdx === 0) { isDeleting = false; wIdx = (wIdx + 1) % words.length; speed = 500; }
-    
-    setTimeout(typeEffect, speed);
-}
-
-// 4. Navigation Active State & Multi-Directional Scroll Reveal
-const sections = document.querySelectorAll('section');
-const navLinks = document.querySelectorAll('.nav-links a');
-
-window.addEventListener('scroll', () => {
-    let current = '';
-    sections.forEach(sec => {
-        const secTop = sec.offsetTop;
-        if(scrollY >= secTop - window.innerHeight / 3) current = sec.getAttribute('id');
+    Object.entries(pageEls).forEach(([key, el]) => {
+        el.classList.toggle('active', key === target);
     });
     navLinks.forEach(a => {
-        a.classList.remove('active');
-        if(a.getAttribute('href').includes(current)) a.classList.add('active');
+        a.classList.toggle('active', a.dataset.nav === target);
     });
-    
-    // Dynamic Background Animation on Scroll
-    const scrolled = window.scrollY;
-    const maxScroll = document.body.scrollHeight - window.innerHeight;
-    const scrollRatio = maxScroll > 0 ? scrolled / maxScroll : 0;
-    
-    // Change hue based on scroll position (0 to 360deg)
-    scrollHue = scrollRatio * 360;
-    document.querySelector('.fluid-bg').style.filter = `hue-rotate(${scrollHue}deg) saturate(${1.05 + scrollRatio * 0.35})`;
-});
+    document.body.dataset.view = target;
 
-// Use IntersectionObserver for natural scroll reveals
-const revealOptions = {
-    root: null,
-    rootMargin: '0px 0px -100px 0px',
-    threshold: 0.1
-};
+    // With a panel open the pointer belongs to the content, not the water.
+    if (fluid) fluid.setAccepting(target === 'index');
 
-const revealObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-        if (entry.isIntersecting) {
-            entry.target.classList.add('active');
-        } else if (entry.boundingClientRect.top > 0) {
-            // Only reset when scrolling up (element goes off the bottom of the viewport)
-            entry.target.classList.remove('active');
-        }
-    });
-}, revealOptions);
-
-document.querySelectorAll('.reveal-left, .reveal-right, .reveal-up').forEach(el => {
-    revealObserver.observe(el);
-});
-
-// 5. Image Reveal on Publication Hover 
-const hoverImg = document.getElementById('hover-img');
-let imgTargetX = 0, imgTargetY = 0, imgX = 0, imgY = 0;
-
-document.querySelectorAll('.img-trigger').forEach(trigger => {
-    trigger.addEventListener('mouseenter', (e) => {
-        const src = trigger.getAttribute('data-img');
-        if(src) { hoverImg.src = src; hoverImg.classList.add('show'); }
-    });
-    trigger.addEventListener('mouseleave', () => hoverImg.classList.remove('show'));
-    trigger.addEventListener('mousemove', (e) => {
-        imgTargetX = e.clientX; imgTargetY = e.clientY;
-    });
-});
-
-function animateHoverImage() {
-    if(hoverImg.classList.contains('show')) {
-        imgX += (imgTargetX - imgX) * 0.1;
-        imgY += (imgTargetY - imgY) * 0.1;
-        hoverImg.style.left = `${imgX}px`;
-        hoverImg.style.top = `${imgY}px`;
+    // Reset the panel's internal scroll so each page opens at the top.
+    if (pageEls[target]) {
+        const sc = pageEls[target].querySelector('.page-scroll');
+        if (sc) sc.scrollTop = 0;
     }
-    requestAnimationFrame(animateHoverImage);
-}
-animateHoverImage();
 
-// Smooth Scroll for Anchors
-document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-    anchor.addEventListener('click', function(e) {
+    if (push) {
+        const hash = target === 'index' ? location.pathname : `#${target}`;
+        history.pushState({ page: target }, '', hash);
+    }
+
+    // rAF, so this is safe on the first call (before updateRail's consts exist).
+    requestAnimationFrame(() => requestAnimationFrame(updateRail));
+}
+
+document.querySelectorAll('[data-nav]').forEach(a => {
+    a.addEventListener('click', (e) => {
         e.preventDefault();
-        document.querySelector(this.getAttribute('href')).scrollIntoView({ behavior: 'smooth' });
+        const want = a.dataset.nav;
+        // Clicking the menu you are already on closes the panel.
+        showPage(document.body.dataset.view === want ? 'index' : want);
     });
 });
 
-// 6. Audio Visualizer -> Point Cloud Interaction
+document.getElementById('close-btn').addEventListener('click', () => showPage('index'));
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') showPage('index');
+});
+
+window.addEventListener('popstate', () => {
+    showPage(location.hash.replace('#', '') || 'index', false);
+});
+
+// Honour a deep link on first load.
+showPage(location.hash.replace('#', '') || 'index', false);
+
+/* ------------------------------------------------------------
+   3b. Scroll indicator for the open page
+   ------------------------------------------------------------ */
+
+const scrollRail = document.getElementById('scroll-rail');
+const scrollThumb = document.getElementById('scroll-thumb');
+
+function activeScroller() {
+    const page = document.querySelector('.page.active .page-scroll');
+    return page || null;
+}
+
+function updateRail() {
+    const sc = activeScroller();
+    if (!sc) { scrollRail.classList.remove('on'); return; }
+
+    const { scrollTop, scrollHeight, clientHeight } = sc;
+    const overflow = scrollHeight - clientHeight;
+
+    if (overflow <= 4) { scrollRail.classList.remove('on'); return; }
+    scrollRail.classList.add('on');
+
+    const railH = scrollRail.clientHeight;
+    const thumbH = Math.max(26, (clientHeight / scrollHeight) * railH);
+    const y = (scrollTop / overflow) * (railH - thumbH);
+
+    scrollThumb.style.height = `${thumbH}px`;
+    scrollThumb.style.transform = `translateY(${y}px)`;
+}
+
+// The active panel changes on navigation, so rebind on every page show.
+document.addEventListener('scroll', updateRail, true);
+window.addEventListener('resize', updateRail);
+new ResizeObserver(updateRail).observe(document.body);
+document.querySelectorAll('.page-scroll').forEach(el => {
+    new ResizeObserver(updateRail).observe(el);
+});
+
+/* ------------------------------------------------------------
+   4. Preloader
+   ------------------------------------------------------------ */
+
+window.addEventListener('load', () => {
+    const el = document.getElementById('pre-counter');
+    let n = 0;
+    const tick = setInterval(() => {
+        n = Math.min(100, n + Math.floor(Math.random() * 9) + 3);
+        el.textContent = n;
+        if (n >= 100) {
+            clearInterval(tick);
+            setTimeout(() => {
+                document.documentElement.classList.remove('is-loading');
+                document.body.classList.remove('is-loading');
+            }, 420);
+        }
+    }, 32);
+});
+
+/* ------------------------------------------------------------
+   5. Works hover preview
+   ------------------------------------------------------------ */
+
+const hoverImg = document.getElementById('hover-img');
+let ix = 0, iy = 0, itx = 0, ity = 0;
+
+document.querySelectorAll('.img-trigger').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+        const src = el.dataset.img;
+        if (!src) return;
+        hoverImg.src = src;
+        itx = ix = mx;
+        ity = iy = my;
+        hoverImg.classList.add('show');
+    });
+    el.addEventListener('mouseleave', () => hoverImg.classList.remove('show'));
+    el.addEventListener('mousemove', () => { itx = mx; ity = my; });
+});
+
+(function animateHoverImg() {
+    if (hoverImg.classList.contains('show')) {
+        ix += (itx - ix) * 0.09;
+        iy += (ity - iy) * 0.09;
+        hoverImg.style.left = `${ix}px`;
+        hoverImg.style.top = `${iy}px`;
+    }
+    requestAnimationFrame(animateHoverImg);
+})();
+
+/* ------------------------------------------------------------
+   6. Music — drives u_energy in the backdrop shader
+   ------------------------------------------------------------ */
+
 const bgMusic = document.getElementById('bg-music');
 const musicBtn = document.getElementById('music-btn');
 const musicIcon = musicBtn.querySelector('i');
-const bgmList = ['./bgm_0.mp3'];
+const TRACKS = ['./bgm_0.mp3'];
 
-let isPlaying = false, audioCtx, analyser, dataArray, source;
+let isPlaying = false;
+let audioCtx, analyser, freqData;
+let needsSeek = true;      // seek once per track, as soon as a duration exists
 
-function playRandomTrack(isInitial = false) {
-    bgMusic.src = bgmList[Math.floor(Math.random() * bgmList.length)];
-    bgMusic.load();
-    
-    if(isInitial) {
-        bgMusic.addEventListener('loadedmetadata', function setRandomTime() {
-            let dur = bgMusic.duration;
-            if(Number.isFinite(dur) && dur > 0) {
-                bgMusic.currentTime = (dur * 0.1) + Math.random() * (dur * 0.8);
-            }
-            bgMusic.removeEventListener('loadedmetadata', setRandomTime);
-        });
-    } else {
-        bgMusic.play();
-    }
+/* The track is large, so metadata often is not ready when the user hits play.
+   Seek whenever the duration first becomes known, and again at play time. */
+function seekRandom() {
+    if (!needsSeek) return;
+    const d = bgMusic.duration;
+    if (!Number.isFinite(d) || d <= 0) return;
+
+    // A host without HTTP range support reports nothing seekable; retry later
+    // rather than giving up, so the seek lands as soon as it becomes possible.
+    if (!bgMusic.seekable.length || bgMusic.seekable.end(0) <= 0) return;
+
+    bgMusic.currentTime = d * 0.1 + Math.random() * d * 0.8;
+    if (bgMusic.currentTime > 0) needsSeek = false;
 }
-playRandomTrack(true);
-bgMusic.addEventListener('ended', () => playRandomTrack(false));
+
+function loadTrack(autoplay) {
+    needsSeek = true;
+    bgMusic.src = TRACKS[Math.floor(Math.random() * TRACKS.length)];
+    bgMusic.load();
+    if (autoplay) bgMusic.play().catch(() => {});
+}
+
+['loadedmetadata', 'durationchange', 'canplay', 'progress', 'playing']
+    .forEach(ev => bgMusic.addEventListener(ev, seekRandom));
+
+loadTrack(false);
+bgMusic.addEventListener('ended', () => loadTrack(true));
 
 function initAudio() {
-    if(!audioCtx) {
+    if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         analyser = audioCtx.createAnalyser();
-        source = audioCtx.createMediaElementSource(bgMusic);
-        source.connect(analyser);
-        analyser.connect(audioCtx.destination);
         analyser.fftSize = 256;
-        dataArray = new Uint8Array(analyser.frequencyBinCount);
-        renderAudioVisuals();
-    }
-    if(audioCtx.state === 'suspended') audioCtx.resume();
-}
+        freqData = new Uint8Array(analyser.frequencyBinCount);
+        audioCtx.createMediaElementSource(bgMusic).connect(analyser);
+        analyser.connect(audioCtx.destination);
 
-function renderAudioVisuals() {
-    requestAnimationFrame(renderAudioVisuals);
-    if(isPlaying) {
-        analyser.getByteFrequencyData(dataArray);
-        
-        let bass = 0; 
-        for(let i=0; i<8; i++) bass += dataArray[i]; 
-        
-        let normalizedBass = (bass / 8) / 255; 
-        audioEnergy += (normalizedBass - audioEnergy) * 0.18;
-    } else {
-        audioEnergy *= 0.92;
+        (function readEnergy() {
+            requestAnimationFrame(readEnergy);
+            if (isPlaying) {
+                analyser.getByteFrequencyData(freqData);
+                let bass = 0;
+                for (let i = 0; i < 8; i++) bass += freqData[i];
+                audioEnergy += ((bass / 8 / 255) - audioEnergy) * 0.18;
+            } else {
+                audioEnergy *= 0.93;
+            }
+            window.__bgEnergy = audioEnergy;   // read by the fluid backdrop
+        })();
     }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
 }
 
 musicBtn.addEventListener('click', () => {
     initAudio();
-    if(isPlaying) {
+    if (isPlaying) {
         bgMusic.pause();
         musicIcon.classList.replace('fa-pause', 'fa-play');
         musicBtn.classList.remove('playing');
     } else {
-        bgMusic.play();
+        seekRandom();                      // in case metadata only just arrived
+        bgMusic.play().catch(() => {});
         musicIcon.classList.replace('fa-play', 'fa-pause');
         musicBtn.classList.add('playing');
     }
     isPlaying = !isPlaying;
 });
-
-// 7. Toast Notification Popup
-let toastTimeout;
-function showWipToast() {
-    const toast = document.getElementById('toast-msg');
-    toast.classList.add('show');
-    
-    // 기존 타이머가 있으면 초기화 (연속 클릭 시 사라지지 않도록)
-    clearTimeout(toastTimeout);
-    
-    // 3초 뒤에 토스트 숨김
-    toastTimeout = setTimeout(() => {
-        toast.classList.remove('show');
-    }, 3000);
-}

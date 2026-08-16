@@ -1,11 +1,13 @@
 <!DOCTYPE html>
-<html lang="ko" class="is-loading">
+<html lang="en" class="is-loading">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>CBIGO</title>
 
-    <!-- Open Graph: 카카오톡 등 링크 프리뷰 썸네일 방지용 -->
+    <meta name="description" content="Daewon Choi — Robotics Researcher, Hanyang University">
+
+    <!-- Open Graph -->
     <meta property="og:title" content="CBIGO" />
     <meta property="og:description" content="Daewon Choi — Robotics Researcher" />
     <meta property="og:image" content="https://choibigo.github.io/img/og_blank.png" />
@@ -13,196 +15,228 @@
     <meta property="og:image:height" content="630" />
     <meta property="og:url" content="https://choibigo.github.io/" />
     <meta property="og:type" content="website" />
-    
+
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3C/svg%3E">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/academicons/1.9.4/css/academicons.min.css">
-    
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Manrope:wght@300;400;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="./styles.css">
 </head>
 
-<body class="is-loading">
-    <div class="noise-overlay"></div>
-    <div class="custom-scrollbar" aria-hidden="true">
-        <div class="custom-scrollbar-thumb"></div>
+<body class="is-loading" data-view="index">
+
+    <!-- ===== Refraction backdrop (WebGL, 2D canvas fallback) ===== -->
+    <div class="backdrop" aria-hidden="true">
+        <canvas id="backdrop-canvas"></canvas>
     </div>
-    
+    <div class="grain" aria-hidden="true"></div>
+    <div class="vignette" aria-hidden="true"></div>
+
+    <!-- ===== Custom cursor ===== -->
+    <div class="cursor-dot" aria-hidden="true"></div>
+    <div class="cursor-ring" aria-hidden="true"></div>
+
+    <!-- ===== Preloader ===== -->
     <div id="preloader">
-        <div class="counter" id="counter">0%</div>
-        <div class="loading-text">Loading...</div>
+        <div class="pre-counter" id="pre-counter">0</div>
     </div>
 
-    <div class="fluid-bg" aria-hidden="true">
-        <canvas id="particle-bg"></canvas>
-    </div>
+    <!-- ===== Floating image preview (Works hover) ===== -->
+    <img id="hover-img" src="" alt="" aria-hidden="true">
 
-    <img id="hover-img" src="" alt="Preview">
+    <!-- ===== Stage: fills the viewport exactly, never scrolls ===== -->
+    <main class="stage">
 
-    <div class="cursor-dot"></div>
-    <div class="cursor-ring"></div>
+        <!-- Index / nav -->
+        <nav class="index" id="index">
+            <a class="brand hover-target" href="#" data-nav="index">@&nbsp;CBIGO</a>
+            <ul class="index-list">
+                <li><a class="hover-target" href="#about"    data-nav="about">About</a></li>
+                <li><a class="hover-target" href="#works"    data-nav="works">Works</a></li>
+                <li><a class="hover-target" href="#research" data-nav="research">Research</a></li>
+                <li><a class="hover-target" href="#contact"  data-nav="contact">Contact</a></li>
+            </ul>
+        </nav>
+
+        <button class="close-btn hover-target" id="close-btn" aria-label="Back to index">✕</button>
+
+        <div class="scroll-rail" id="scroll-rail" aria-hidden="true">
+            <div class="scroll-thumb" id="scroll-thumb"></div>
+        </div>
+
+        <!-- ===== Pages ===== -->
+        <div class="pages" id="pages">
+
+            <!-- ---------- WORKS ---------- -->
+            <section class="page" id="page-works" data-page="works">
+                <div class="page-scroll">
+                    <div class="pub-list">
+                        <a href="https://robots-oh.github.io/TASMap/" target="_blank" rel="noopener"
+                           class="pub-item hover-target img-trigger" data-img="./img/tasmap.png">
+                            <span class="pub-index">01</span>
+                            <span class="pub-body">
+                                <span class="pub-title">Task-Aware Semantic Map</span>
+                                <span class="pub-subtitle">Autonomous Robot Task Assignment Beyond Commands</span>
+                                <span class="pub-authors"><strong>Daewon Choi</strong>, Hosung Lee, Soeun Hwang and Yoonseon Oh</span>
+                                <span class="pub-meta">ICRA 2025</span>
+                            </span>
+                        </a>
+
+                        <a href="https://robots-oh.github.io/tasmap_pp/" target="_blank" rel="noopener"
+                           class="pub-item hover-target img-trigger" data-img="./img/tasmap_pp.jpg">
+                            <span class="pub-index">02</span>
+                            <span class="pub-body">
+                                <span class="pub-title">Task-Aware Semantic Map++</span>
+                                <span class="pub-subtitle">Cost-Efficient Task Assignment with Advanced Benchmark</span>
+                                <span class="pub-authors"><strong>Daewon Choi*</strong>, Soeun Hwang* and Yoonseon Oh</span>
+                                <span class="pub-meta">IEEE Robotics and Automation Letters</span>
+                            </span>
+                        </a>
+
+                        <a href="https://www.youtube.com/watch?v=qqRijV0oSmU" target="_blank" rel="noopener"
+                           class="pub-item hover-target">
+                            <span class="pub-index">03</span>
+                            <span class="pub-body">
+                                <span class="pub-title">LITE-Planner</span>
+                                <span class="pub-meta">Under Review</span>
+                            </span>
+                        </a>
+
+                        <a href="https://www.youtube.com/watch?v=UWu3ZcIuiOc" target="_blank" rel="noopener"
+                           class="pub-item hover-target">
+                            <span class="pub-index">04</span>
+                            <span class="pub-body">
+                                <span class="pub-title">DOLBi</span>
+                                <span class="pub-meta">Under Review</span>
+                            </span>
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ---------- ABOUT ---------- -->
+            <section class="page" id="page-about" data-page="about">
+                <div class="page-scroll">
+                    <p class="lede">
+                        Daewon Choi is a Ph.D. student at Hanyang University who likes picking up
+                        new things and digging into how they work — lately, how robots can make
+                        sense of what they see.
+                    </p>
+
+                    <ul class="cv">
+                        <li>
+                            <span class="cv-date">2023 — Present</span>
+                            <span class="cv-body">
+                                <span class="cv-role">Ph.D. in Robotics</span>
+                                <span class="cv-org">Hanyang University · advised by
+                                    <a href="https://sites.google.com/view/robots-oh/lab" target="_blank" rel="noopener" class="link hover-target">Prof. Yoonseon Oh</a>
+                                </span>
+                            </span>
+                        </li>
+                        <li>
+                            <span class="cv-date">2020 — 2023</span>
+                            <span class="cv-body">
+                                <span class="cv-role">Computer Vision Researcher</span>
+                                <span class="cv-org">
+                                    <a href="https://www.mirero.co.kr/" target="_blank" rel="noopener" class="link hover-target">Mirero System</a>
+                                </span>
+                            </span>
+                        </li>
+                        <li>
+                            <span class="cv-date">2015 — 2021</span>
+                            <span class="cv-body">
+                                <span class="cv-role">B.S. in Computer Science &amp; Engineering</span>
+                                <span class="cv-org">
+                                    <a href="https://csai.jbnu.ac.kr/csai/index.do" target="_blank" rel="noopener" class="link hover-target">Jeonbuk National University</a>
+                                </span>
+                            </span>
+                        </li>
+                    </ul>
+
+                    <div class="socials">
+                        <a href="https://github.com/choibigo" target="_blank" rel="noopener" class="hover-target" aria-label="GitHub"><i class="fa-brands fa-github"></i></a>
+                        <a href="https://scholar.google.co.kr/citations?user=BkMyH2MAAAAJ&hl=ko&oi=sra" target="_blank" rel="noopener" class="hover-target" aria-label="Google Scholar"><i class="ai ai-google-scholar"></i></a>
+                        <a href="mailto:cbigo@hanyang.ac.kr" class="hover-target" aria-label="Email"><i class="fa-solid fa-envelope"></i></a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ---------- RESEARCH ---------- -->
+            <section class="page" id="page-research" data-page="research">
+                <div class="page-scroll">
+                    <ol class="areas">
+                        <li class="area">
+                            <span class="area-num">01</span>
+                            <span class="area-name">Robot Action from Video</span>
+                            <span class="area-desc">Learning robust control policies directly from human demonstration videos to acquire complex behaviors without structured datasets.</span>
+                        </li>
+                        <li class="area">
+                            <span class="area-num">02</span>
+                            <span class="area-name">Dexterous Hand</span>
+                            <span class="area-desc">Developing highly articulate robotic end-effectors for fine motor control, tactile sensing, and dynamic grasping of varied objects.</span>
+                        </li>
+                        <li class="area">
+                            <span class="area-num">03</span>
+                            <span class="area-name">Bimanual Manipulation</span>
+                            <span class="area-desc">Advanced coordination algorithms for dual-arm systems to solve tasks requiring simultaneous holding, assembly, or handover.</span>
+                        </li>
+                        <li class="area">
+                            <span class="area-num">04</span>
+                            <span class="area-name">Scene Understanding</span>
+                            <span class="area-desc">Semantic and spatial interpretation of environments using multi-modal perception to build actionable 3D maps for navigation.</span>
+                        </li>
+                        <li class="area">
+                            <span class="area-num">05</span>
+                            <span class="area-name">Task Planning</span>
+                            <span class="area-desc">Decomposing natural language instructions into actionable robotic sequences, bridging the gap between LLMs and physical execution.</span>
+                        </li>
+                    </ol>
+                </div>
+            </section>
+
+            <!-- ---------- CONTACT ---------- -->
+            <section class="page" id="page-contact" data-page="contact">
+                <div class="page-scroll">
+                    <div class="contact">
+                        <div class="portrait hover-target">
+                            <img src="./img/my_photo.png" alt="Daewon Choi">
+                            <div class="portrait-ring">
+                                <svg viewBox="0 0 100 100" aria-hidden="true">
+                                    <path id="circlePath" fill="none" d="M 50, 50 m -40, 0 a 40,40 0 1,1 80,0 a 40,40 0 1,1 -80,0" />
+                                    <text><textPath href="#circlePath" startOffset="0%" textLength="248" lengthAdjust="spacing">FROM THE BOTTOM TO THE TOP</textPath></text>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <div class="contact-body">
+                            <a href="mailto:cbigo@hanyang.ac.kr" class="email hover-target">cbigo@hanyang.ac.kr</a>
+                            <p class="contact-note">
+                                Robotics Lab, Hanyang University<br>
+                                Seoul, Republic of Korea
+                            </p>
+                            <div class="socials">
+                                <a href="https://github.com/choibigo" target="_blank" rel="noopener" class="hover-target" aria-label="GitHub"><i class="fa-brands fa-github"></i></a>
+                                <a href="https://scholar.google.co.kr/citations?user=BkMyH2MAAAAJ&hl=ko&oi=sra" target="_blank" rel="noopener" class="hover-target" aria-label="Google Scholar"><i class="ai ai-google-scholar"></i></a>
+                                <a href="mailto:cbigo@hanyang.ac.kr" class="hover-target" aria-label="Email"><i class="fa-solid fa-envelope"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
 
     <audio id="bg-music" crossorigin="anonymous"></audio>
-    <button class="music-ctrl hover-target" id="music-btn">
+    <button class="music-ctrl hover-target" id="music-btn" aria-label="Toggle background music">
         <i class="fa-solid fa-play"></i>
     </button>
-    
-    <!-- 팝업(Toast) 알림 요소 추가 -->
-    <div id="toast-msg" class="toast-popup">
-        <i class="fa-solid fa-clock"></i> Currently in progress. Opening soon.
-    </div>
 
-    <nav>
-        <div class="logo">CBIGO</div>
-        <div class="nav-links">
-            <a href="#home" class="hover-target active">Home</a>
-            <a href="#about" class="hover-target">About</a>
-            <a href="#research" class="hover-target">Research</a>
-            <a href="#publication" class="hover-target">Work</a>
-            <a href="#contact" class="hover-target">Contact</a>
-        </div>
-    </nav>
-
-    <section id="home">
-        <h1 class="hero-title">
-            <span class="text-outline">
-                <span class="word-block">DAE</span><span class="word-block">WON</span>
-            </span><br>CHOI
-        </h1>
-        <div class="type-container">
-            <span style="color: var(--accent-1);">></span>
-            <span id="typing-text"></span><span class="cursor-blink"></span>
-        </div>
-    </section>
-
-    <section id="about">
-        <div class="about-grid">
-            <div>
-                <h2 class="section-title reveal-left">About</h2>
-            </div>
-            <div class="about-text">
-                <div class="timeline">
-                    <div class="timeline-item reveal-right">
-                        <div class="timeline-dot"></div>
-                        <div class="timeline-date"><span>2023 — Present</span></div>
-                        <div class="timeline-content">
-                            <h3>Ph.D. in Robotics</h3>
-                            <p><strong>Hanyang University</strong><br>Advised by <a href="https://sites.google.com/view/robots-oh/lab" target="_blank" class="cool-link hover-target">Prof. Yoonseon Oh</a></p>
-                        </div>
-                    </div>
-                    
-                    <div class="timeline-item reveal-right">
-                        <div class="timeline-dot"></div>
-                        <div class="timeline-date"><span>2020 — 2023</span></div>
-                        <div class="timeline-content">
-                            <h3>Computer Vision Researcher</h3>
-                            <p><a href="https://www.mirero.co.kr/" target="_blank" class="cool-link hover-target">Mirero System</a></p>
-                        </div>
-                    </div>
-                    
-                    <div class="timeline-item reveal-right">
-                        <div class="timeline-dot"></div>
-                        <div class="timeline-date"><span>2015 — 2021</span></div>
-                        <div class="timeline-content">
-                            <h3>B.S. in Computer Science & Engineering</h3>
-                            <p><a href="https://csai.jbnu.ac.kr/csai/index.do" target="_blank" class="cool-link hover-target">Jeonbuk National University</a></p>
-                        </div>
-                    </div>
-                </div>
-                <div class="social-dock reveal-up">
-                    <a href="https://github.com/choibigo" target="_blank" class="hover-target"><i class="fa-brands fa-github"></i></a>
-                    <a href="https://scholar.google.co.kr/citations?user=BkMyH2MAAAAJ&hl=ko&oi=sra" target="_blank" class="hover-target"><i class="ai ai-google-scholar"></i></a>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section id="research">
-        <h2 class="section-title reveal-left">Research Focus</h2>
-        <div class="research-list">
-            <div class="research-item reveal-left">
-                <div class="r-title">Robot Action<br>from Video</div>
-                <div class="r-desc">Learning robust control policies directly from human demonstration videos to acquire complex behaviors without structured datasets.</div>
-            </div>
-            <div class="research-item reveal-right">
-                <div class="r-title">Dexterous<br>Hand</div>
-                <div class="r-desc">Developing highly articulate robotic end-effectors for fine motor control, tactile sensing, and dynamic grasping of varied objects.</div>
-            </div>
-            <div class="research-item reveal-left">
-                <div class="r-title">Bimanual<br>Manipulation</div>
-                <div class="r-desc">Advanced coordination algorithms for dual-arm systems to solve tasks requiring simultaneous holding, assembly, or handover.</div>
-            </div>
-            <div class="research-item reveal-right">
-                <div class="r-title">Scene<br>Understanding</div>
-                <div class="r-desc">Semantic and spatial interpretation of environments using multi-modal perception to build actionable 3D maps for navigation.</div>
-            </div>
-            <div class="research-item reveal-left">
-                <div class="r-title">Task<br>Planning</div>
-                <div class="r-desc">Decomposing natural language human instructions into actionable robotic sequences, bridging the gap between LLMs and physical execution.</div>
-            </div>
-        </div>
-    </section>
-
-    <section id="publication">
-        <h2 class="section-title reveal-left">Selected Works</h2>
-        <div class="pub-list">
-            <a href="https://robots-oh.github.io/TASMap/" target="_blank" class="pub-item hover-target img-trigger reveal-right" data-img="./img/tasmap.png">
-                <div class="pub-title">Task-Aware Semantic Map</div>
-                <div class="pub-subtitle">Autonomous Robot Task Assignment Beyond Commands</div>
-                <div class="pub-authors"><strong>Daewon Choi</strong>, Hosung Lee, Soeun Hwang and Yoonseon Oh</div>
-                <div class="pub-meta">IEEE International Conference on Robotics and Automation 2025</div>
-            </a>
-
-            <a href="https://robots-oh.github.io/tasmap_pp/" target="_blank" class="pub-item hover-target img-trigger reveal-left" data-img="./img/tasmap_pp.jpg">
-                <div class="pub-title">Task-Aware Semantic Map++</div>
-                <div class="pub-subtitle">Cost-Efficient Task Assignment with Advanced Benchmark</div>
-                <div class="pub-authors"><strong>Daewon Choi*</strong>, Soeun Hwang* and Yoonseon Oh</div>
-                <div class="pub-meta">IEEE Robotics and Automation Letters</div>
-            </a>
-            
-            <!-- onclick 함수로 팝업 호출 추가 -->
-            <a href="https://www.youtube.com/watch?v=qqRijV0oSmU" target="_blank" class="pub-item hover-target reveal-right">
-                <div class="pub-title">LITE-Planner</div>
-                <!-- <div class="pub-subtitle">Leveraging In-Scene Evidence & Selective LLM Reasoning</div> -->
-                <div class="pub-meta">Under Review</div>
-            </a>
-            <a href="https://www.youtube.com/watch?v=UWu3ZcIuiOc" target="_blank" class="pub-item hover-target reveal-left">
-                <div class="pub-title">DOLBi</div>
-                <!-- <div class="pub-subtitle">Demonstration-based Object-centric Learning</div> -->
-                <div class="pub-meta">Under Review</div>
-            </a>
-        </div>
-    </section>
-
-    <section id="contact">
-        <h2 class="section-title reveal-up">Contact</h2>
-        <div class="contact-wrapper reveal-up">
-            <div class="profile-container hover-target">
-                <img src="./img/my_photo.png" alt="Daewon Choi" class="profile-img">
-                <div class="spinning-text">
-                    <svg viewBox="0 0 100 100">
-                        <path id="circlePath" fill="none" d="M 50, 50 m -42, 0 a 42,42 0 1,1 84,0 a 42,42 0 1,1 -84,0" />
-                        <text>
-                            <textPath href="#circlePath" startOffset="0%" textLength="255" lengthAdjust="spacing">
-                                FROM THE BOTTOM TO THE TOP
-                            </textPath>
-                        </text>
-                    </svg>
-                </div>
-            </div>
-            <a href="mailto:cbigo@hanyang.ac.kr" class="email-link hover-target reveal-up">
-                <span class="word-block">cbigo@</span><span class="word-block">hanyang.ac.kr</span>
-            </a>
-        </div>
-    </section>
-
-    <footer>
-        © 2026 Daewon Choi. Art Direction & Code Refined.
-    </footer>
-
+    <script src="./fluid.js"></script>
     <script src="./script.js"></script>
 </body>
 </html>
