@@ -421,17 +421,36 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') showPage('index');
 });
 
-/* Clicking outside the content closes the panel. These are all container
-   elements — a click only reports one of them as the target when it landed on
-   empty space, never when it landed on actual content. */
-const BACKDROP_HITS = new Set(['stage', 'pages', 'page', 'page-scroll']);
+/* Clicking outside the content closes the panel.
+
+   Testing the click target's class fails wherever a full-width layout wrapper
+   sits under the pointer (the area beside the Contact photo, for one). So
+   instead ask whether the point actually landed on something that draws:
+   an element rendering its own text, or an image. Everything else is layout. */
+function pointHitsContent(panel, x, y) {
+    const walker = document.createTreeWalker(panel, NodeFilter.SHOW_ELEMENT);
+    for (let el = walker.nextNode(); el; el = walker.nextNode()) {
+        const tag = el.tagName.toLowerCase();
+        const draws = tag === 'img' || tag === 'svg' ||
+            [...el.childNodes].some(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim());
+        if (!draws) continue;
+
+        const r = el.getBoundingClientRect();
+        if (r.width && r.height && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
+            return true;
+        }
+    }
+    return false;
+}
 
 document.addEventListener('click', (e) => {
     if (document.body.dataset.view === 'index') return;
+    if (e.target.closest('.index, #close-btn, .music-ctrl')) return;
 
-    const el = e.target;
-    if (el === document.body || el === backdropCanvas) { showPage('index'); return; }
-    if (el.classList && [...el.classList].some(c => BACKDROP_HITS.has(c))) showPage('index');
+    const panel = document.querySelector('.page.active');
+    if (panel && pointHitsContent(panel, e.clientX, e.clientY)) return;
+
+    showPage('index');
 });
 
 // Always open on the index; there are no panel URLs to restore.

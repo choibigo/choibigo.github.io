@@ -304,11 +304,9 @@ window.initFluidBackdrop = function (canvas, onReady) {
     const BASE = HEAD + COLOR_LIB + `
     void main() {
         vec3 col = vec3(0.014, 0.018, 0.036);
-        // Wider blobs so the colour reaches further and less of the canvas
-        // is left dark.
-        col += smoothstep(0.86, 0.0, length((vUv - vec2(0.24, 0.30)) * vec2(1.5, 1.0))) * vec3(0.42, 0.06, 0.72);
-        col += smoothstep(0.82, 0.0, length((vUv - vec2(0.78, 0.36)) * vec2(1.5, 1.0))) * vec3(0.00, 0.46, 0.60);
-        col += smoothstep(0.90, 0.0, length((vUv - vec2(0.52, 0.80)) * vec2(1.5, 1.0))) * vec3(0.50, 0.04, 0.24);
+        col += smoothstep(0.80, 0.0, length((vUv - vec2(0.24, 0.30)) * vec2(1.5, 1.0))) * vec3(0.42, 0.06, 0.72);
+        col += smoothstep(0.76, 0.0, length((vUv - vec2(0.78, 0.36)) * vec2(1.5, 1.0))) * vec3(0.00, 0.46, 0.60);
+        col += smoothstep(0.84, 0.0, length((vUv - vec2(0.52, 0.80)) * vec2(1.5, 1.0))) * vec3(0.50, 0.04, 0.24);
         o = vec4(rgbToPigment(col), 1.0);
     }`;
 
@@ -317,11 +315,25 @@ window.initFluidBackdrop = function (canvas, onReady) {
     const DROP = HEAD + `
     uniform sampler2D u_dye, u_base;
     uniform vec2  u_point;
-    uniform float u_radius, u_aspect, u_strength;
+    uniform float u_radius, u_aspect, u_strength, u_seed, u_soft;
     void main() {
         vec2 p = vUv;      p.x *= u_aspect;
         vec2 c = u_point;  c.x *= u_aspect;
-        float m = smoothstep(u_radius, u_radius * 0.35, length(p - c)) * u_strength;
+
+        vec2  d    = p - c;
+        float ang  = atan(d.y, d.x);
+        float dist = length(d);
+
+        /* A perfect circle reads as a stamp. Perturbing the radius by angle
+           — a different phase per drop — gives each one its own uneven,
+           ink-blot outline instead. */
+        float wob = sin(ang * 2.0 + u_seed) * 0.15
+                  + sin(ang * 3.0 - u_seed * 1.7) * 0.10
+                  + sin(ang * 5.0 + u_seed * 2.6) * 0.06
+                  + sin(ang * 8.0 - u_seed * 3.3) * 0.035;
+        float r = u_radius * (1.0 + wob);
+
+        float m = smoothstep(r, r * u_soft, dist) * u_strength;
         o = vec4(mix(texture(u_dye, vUv).xyz, texture(u_base, vUv).xyz, m), 1.0);
     }`;
 
@@ -417,7 +429,7 @@ window.initFluidBackdrop = function (canvas, onReady) {
         col += pow(abs(sin(h * 9.0 + t * 1.5)), 12.0)
              * vec3(0.52, 0.60, 0.86) * (0.26 + u_energy * 0.3);
 
-        col *= 1.0 - 0.28 * pow(length(p) * 0.78, 2.0);
+        col *= 1.0 - 0.315 * pow(length(p) * 0.78, 2.0);
         o = vec4(pow(max(col, 0.0), vec3(0.88)), 1.0);
     }`;
 
@@ -709,6 +721,9 @@ window.initFluidBackdrop = function (canvas, onReady) {
                 gl.uniform1f(d.u_radius, r);
                 gl.uniform1f(d.u_aspect, aspect);
                 gl.uniform1f(d.u_strength, 0.9);
+                gl.uniform1f(d.u_seed, Math.random() * 20.0);
+                // Vary how sharply each drop fades, so they don't share an edge.
+                gl.uniform1f(d.u_soft, 0.20 + Math.random() * 0.35);
                 blit(dye.write);
                 dye.swap();
 
