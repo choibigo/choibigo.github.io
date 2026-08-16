@@ -9,7 +9,7 @@
    warping the whole image at once.
    ============================================================ */
 
-window.initFluidBackdrop = function (canvas) {
+window.initFluidBackdrop = function (canvas, onReady) {
 
     const gl = canvas.getContext('webgl2', {
         alpha: false, depth: false, stencil: false,
@@ -39,7 +39,10 @@ window.initFluidBackdrop = function (canvas) {
            back to its original layout. */
         RESEED: 0.005,
         COORD_RELAX: 0.004,       // how fast the water surface un-distorts
-        MAX_STROKE: 0.030         // caps how hard one frame's stroke can hit
+        MAX_STROKE: 0.030,        // caps how hard one frame's stroke can hit
+        INTRO_SECONDS: 1.0,       // droplets of paint land until the canvas fills
+        DROP_COLS: 4,             // one drop per cell, in shuffled order — 8 drops
+        DROP_ROWS: 2
     };
 
     /* ---------- program helper ---------- */
@@ -301,10 +304,25 @@ window.initFluidBackdrop = function (canvas) {
     const BASE = HEAD + COLOR_LIB + `
     void main() {
         vec3 col = vec3(0.014, 0.018, 0.036);
-        col += smoothstep(0.62, 0.0, length((vUv - vec2(0.24, 0.30)) * vec2(1.5, 1.0))) * vec3(0.42, 0.06, 0.72);
-        col += smoothstep(0.58, 0.0, length((vUv - vec2(0.78, 0.36)) * vec2(1.5, 1.0))) * vec3(0.00, 0.46, 0.60);
-        col += smoothstep(0.66, 0.0, length((vUv - vec2(0.52, 0.80)) * vec2(1.5, 1.0))) * vec3(0.50, 0.04, 0.24);
+        // Wider blobs so the colour reaches further and less of the canvas
+        // is left dark.
+        col += smoothstep(0.86, 0.0, length((vUv - vec2(0.24, 0.30)) * vec2(1.5, 1.0))) * vec3(0.42, 0.06, 0.72);
+        col += smoothstep(0.82, 0.0, length((vUv - vec2(0.78, 0.36)) * vec2(1.5, 1.0))) * vec3(0.00, 0.46, 0.60);
+        col += smoothstep(0.90, 0.0, length((vUv - vec2(0.52, 0.80)) * vec2(1.5, 1.0))) * vec3(0.50, 0.04, 0.24);
         o = vec4(rgbToPigment(col), 1.0);
+    }`;
+
+    /* Loading: the canvas starts empty and droplets of paint land on it,
+       each one soft-edged so it reads as ink soaking in rather than a stamp. */
+    const DROP = HEAD + `
+    uniform sampler2D u_dye, u_base;
+    uniform vec2  u_point;
+    uniform float u_radius, u_aspect, u_strength;
+    void main() {
+        vec2 p = vUv;      p.x *= u_aspect;
+        vec2 c = u_point;  c.x *= u_aspect;
+        float m = smoothstep(u_radius, u_radius * 0.35, length(p - c)) * u_strength;
+        o = vec4(mix(texture(u_dye, vUv).xyz, texture(u_base, vUv).xyz, m), 1.0);
     }`;
 
     /* ---- flowing surface coordinates --------------------------------------
@@ -399,7 +417,7 @@ window.initFluidBackdrop = function (canvas) {
         col += pow(abs(sin(h * 9.0 + t * 1.5)), 12.0)
              * vec3(0.52, 0.60, 0.86) * (0.26 + u_energy * 0.3);
 
-        col *= 1.0 - 0.42 * pow(length(p) * 0.78, 2.0);
+        col *= 1.0 - 0.28 * pow(length(p) * 0.78, 2.0);
         o = vec4(pow(max(col, 0.0), vec3(0.88)), 1.0);
     }`;
 
@@ -416,6 +434,7 @@ window.initFluidBackdrop = function (canvas) {
         gradient:   program(VERT, GRADIENT),
         base:       program(VERT, BASE),
         reseed:     program(VERT, RESEED),
+        drop:       program(VERT, DROP),
         coordInit:  program(VERT, COORD_INIT),
         coordRelax: program(VERT, COORD_RELAX),
         display:    program(VERT, DISPLAY)
@@ -427,6 +446,18 @@ window.initFluidBackdrop = function (canvas) {
     const RGBA = [gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT];
 
     let dye, baseFBO, coord, velocity, divergenceFBO, curlFBO, pressure;
+    let introDone = false;
+    let dropped = 0;
+
+    // Every cell gets exactly one drop, visited in random order.
+    const dropCells = [];
+    for (let cy = 0; cy < CONF.DROP_ROWS; cy++) {
+        for (let cx = 0; cx < CONF.DROP_COLS; cx++) dropCells.push({ cx, cy });
+    }
+    for (let i = dropCells.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [dropCells[i], dropCells[j]] = [dropCells[j], dropCells[i]];
+    }
     let simW, simH, dyeW, dyeH;
 
     function use(prog, texelX, texelY) {
@@ -457,12 +488,17 @@ window.initFluidBackdrop = function (canvas) {
 
         coord = makeDoubleFBO(dyeW, dyeH, ...RG, lin);
 
-        // Paint the original layout, and start the dye as a copy of it.
+        // Paint the original layout into the reference target.
         use(progs.base, 1 / dyeW, 1 / dyeH);
         blit(baseFBO);
-        use(progs.base, 1 / dyeW, 1 / dyeH);
-        blit(dye.write);
-        dye.swap();
+
+        // On first load the dye stays empty so the intro can fill it. On a
+        // later rebuild (a resize) it is seeded full — no replaying the intro.
+        if (introDone) {
+            use(progs.base, 1 / dyeW, 1 / dyeH);
+            blit(dye.write);
+            dye.swap();
+        }
 
         // The surface starts as an undistorted grid.
         use(progs.coordInit, 1 / dyeW, 1 / dyeH);
@@ -557,12 +593,15 @@ window.initFluidBackdrop = function (canvas) {
         blit(dye.write);
         dye.swap();
 
-        u = use(progs.reseed, dye.texelX, dye.texelY);
-        gl.uniform1i(u.u_dye, dye.read.attach(0));
-        gl.uniform1i(u.u_base, baseFBO.attach(1));
-        gl.uniform1f(u.u_amount, CONF.RESEED);
-        blit(dye.write);
-        dye.swap();
+        // Skipped during the intro, or it would flood the empty canvas at once.
+        if (introDone) {
+            u = use(progs.reseed, dye.texelX, dye.texelY);
+            gl.uniform1i(u.u_dye, dye.read.attach(0));
+            gl.uniform1i(u.u_base, baseFBO.attach(1));
+            gl.uniform1f(u.u_amount, CONF.RESEED);
+            blit(dye.write);
+            dye.swap();
+        }
 
         // Carry the surface coordinates along the same current, so the water
         // itself stretches and swirls rather than only the pigment.
@@ -615,7 +654,8 @@ window.initFluidBackdrop = function (canvas) {
         buildTargets();
     });
 
-    let last = performance.now();
+    const start = performance.now();
+    let last = start;
     (function frame(now) {
         const dt = Math.min((now - last) / 1000, 0.0166);
         last = now;
@@ -636,6 +676,55 @@ window.initFluidBackdrop = function (canvas) {
         }
 
         step(dt);
+
+        if (!introDone) {
+            const elapsed = (now - start) / 1000;
+
+            /* Paced by time, but held back by how far the document actually
+               got: the drops stall part-way while the page is still loading
+               and only complete once it is ready. */
+            const ready = document.readyState;
+            const cap = ready === 'complete' ? 1 : ready === 'interactive' ? 0.7 : 0.4;
+            const prog = Math.min(elapsed / CONF.INTRO_SECONDS, cap);
+
+            const want = Math.floor(prog * dropCells.length);
+            const aspect = canvas.width / canvas.height;
+
+            // Drops land in a shuffled order over a jittered grid. Stratifying
+            // them this way means the drops alone cover the canvas — no global
+            // flood at the end, which is what read as "it just fills".
+            while (dropped < want) {
+                const cell = dropCells[dropped];
+                const x = (cell.cx + 0.15 + 0.70 * Math.random()) / CONF.DROP_COLS;
+                const y = (cell.cy + 0.15 + 0.70 * Math.random()) / CONF.DROP_ROWS;
+                const k = dropped / dropCells.length;
+                // Fewer, larger drops — the radius has to grow with the cell
+                // size or the gaps between cells never close.
+                const r = (0.51 + 0.18 * k) * (0.9 + 0.2 * Math.random());
+
+                let d = use(progs.drop, dye.texelX, dye.texelY);
+                gl.uniform1i(d.u_dye, dye.read.attach(0));
+                gl.uniform1i(d.u_base, baseFBO.attach(1));
+                gl.uniform2f(d.u_point, x, y);
+                gl.uniform1f(d.u_radius, r);
+                gl.uniform1f(d.u_aspect, aspect);
+                gl.uniform1f(d.u_strength, 0.9);
+                blit(dye.write);
+                dye.swap();
+
+                // A soft nudge where it lands — a hard jet here smeared the
+                // drop into a streak before it read as a drop at all.
+                const a = Math.random() * Math.PI * 2;
+                splat(x, y, x, y, Math.cos(a) * 110, Math.sin(a) * 110, 0.004, 0.0);
+                dropped++;
+            }
+
+            if (prog >= 1 && dropped >= dropCells.length) {
+                introDone = true;
+                if (onReady) onReady();
+            }
+        }
+
         render(t, window.__bgEnergy || 0);
         requestAnimationFrame(frame);
     })(last);

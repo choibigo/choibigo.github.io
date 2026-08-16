@@ -73,8 +73,8 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: non
     z-index: 2;
     pointer-events: none;
     background:
-        radial-gradient(120% 90% at 50% 45%, transparent 40%, rgba(0, 0, 0, 0.55) 100%),
-        linear-gradient(to bottom, rgba(0, 0, 0, 0.4) 0%, transparent 22%, transparent 74%, rgba(0, 0, 0, 0.45) 100%);
+        radial-gradient(130% 100% at 50% 45%, transparent 48%, rgba(0, 0, 0, 0.37) 100%),
+        linear-gradient(to bottom, rgba(0, 0, 0, 0.27) 0%, transparent 22%, transparent 76%, rgba(0, 0, 0, 0.30) 100%);
 }
 
 /* Reading scrim — only while a page is open, so the index stays clean. */
@@ -127,30 +127,16 @@ body.hovering .cursor-ring {
 }
 
 /* ============================================================
-   Preloader
+   Loading — there is no overlay. The backdrop starts empty and the
+   paint rises into it; the UI is held back until that finishes.
    ============================================================ */
 
-#preloader {
-    position: fixed;
-    inset: 0;
-    z-index: 10001;
-    background: var(--bg);
-    display: flex;
-    align-items: flex-end;
-    justify-content: flex-end;
-    padding: var(--pad);
-    transition: opacity 0.9s ease;
-}
-.pre-counter {
-    font-size: clamp(3.5rem, 14vw, 11rem);
-    font-weight: 700;
-    line-height: 0.8;
-    letter-spacing: -0.04em;
-}
-body:not(.is-loading) #preloader {
+body.is-loading .stage,
+body.is-loading .music-ctrl {
     opacity: 0;
     pointer-events: none;
 }
+.stage, .music-ctrl { transition: opacity 0.8s ease; }
 
 /* ============================================================
    Stage — exactly one viewport, never scrolls

@@ -315,7 +315,9 @@ function initCanvasBackdrop() {
 /* Prefer the real fluid simulation; fall back to the procedural refraction
    shader, then to a plain animated gradient. */
 let fluid = null;
-try { fluid = window.initFluidBackdrop(backdropCanvas); } catch (e) { fluid = null; }
+// revealSite is a hoisted declaration further down; the fluid calls it once
+// the paint has finished filling the canvas.
+try { fluid = window.initFluidBackdrop(backdropCanvas, revealSite); } catch (e) { fluid = null; }
 
 if (!fluid) {
     // A canvas keeps its first context type, so hand the fallback a fresh one.
@@ -419,6 +421,19 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') showPage('index');
 });
 
+/* Clicking outside the content closes the panel. These are all container
+   elements — a click only reports one of them as the target when it landed on
+   empty space, never when it landed on actual content. */
+const BACKDROP_HITS = new Set(['stage', 'pages', 'page', 'page-scroll']);
+
+document.addEventListener('click', (e) => {
+    if (document.body.dataset.view === 'index') return;
+
+    const el = e.target;
+    if (el === document.body || el === backdropCanvas) { showPage('index'); return; }
+    if (el.classList && [...el.classList].some(c => BACKDROP_HITS.has(c))) showPage('index');
+});
+
 // Always open on the index; there are no panel URLs to restore.
 showPage('index');
 
@@ -461,24 +476,20 @@ document.querySelectorAll('.page-scroll').forEach(el => {
 });
 
 /* ------------------------------------------------------------
-   4. Preloader
+   4. Reveal — the paint filling the canvas *is* the loading screen
    ------------------------------------------------------------ */
 
-window.addEventListener('load', () => {
-    const el = document.getElementById('pre-counter');
-    let n = 0;
-    const tick = setInterval(() => {
-        n = Math.min(100, n + Math.floor(Math.random() * 9) + 3);
-        el.textContent = n;
-        if (n >= 100) {
-            clearInterval(tick);
-            setTimeout(() => {
-                document.documentElement.classList.remove('is-loading');
-                document.body.classList.remove('is-loading');
-            }, 420);
-        }
-    }, 32);
-});
+function revealSite() {
+    document.documentElement.classList.remove('is-loading');
+    document.body.classList.remove('is-loading');
+}
+
+// If the fluid never started (no WebGL2), don't wait on an intro that will
+// never finish — reveal as soon as the page is loaded.
+if (!fluid) {
+    if (document.readyState === 'complete') revealSite();
+    else window.addEventListener('load', revealSite);
+}
 
 /* ------------------------------------------------------------
    5. Works hover preview
