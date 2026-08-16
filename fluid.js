@@ -24,19 +24,21 @@ window.initFluidBackdrop = function (canvas) {
 
     const CONF = {
         SIM_RES: 160,
-        DYE_RES: 256,             // warp-field resolution; low keeps it smooth
-        VEL_DISSIPATION: 1.6,     // the flow settles instead of running on
-        WARP_DISSIPATION: 0.9,    // how fast a stroke relaxes away
+        DYE_RES: 512,             // the paint itself
+        /* Transport is now the only visible channel, so the flow has to
+           actually carry the paint: enough force and enough persistence to
+           move it, but low curl so it never churns. */
+        VEL_DISSIPATION: 0.55,
+        DYE_DISSIPATION: 0.0,     // no loss — this is what was dimming it
         PRESSURE: 0.80,
         PRESSURE_ITERATIONS: 18,
-        CURL: 3.5,                // gentle eddies; high values self-amplify
-        SPLAT_RADIUS: 0.0022,
-        SPLAT_FORCE: 2600,
-        /* The shader domain only spans about +-0.85, so the warp has to stay
-           small or the noise field is scrambled into speckle. */
-        WARP_INJECT: 0.000175,    // stroke -> warp field
-        WARP_SCALE: 1.0,          // warp field -> glass noise domain
-        WARP_COLOR: 7.0,          // warp field -> colour field (the visible part)
+        CURL: 4,                  // minimal: curl is what made it chaotic
+        SPLAT_RADIUS: 0.0030,
+        SPLAT_FORCE: 600,
+        /* Slow enough that a stroke stays readable before the paint drifts
+           back to its original layout. */
+        RESEED: 0.005,
+        COORD_RELAX: 0.004,       // how fast the water surface un-distorts
         MAX_STROKE: 0.030         // caps how hard one frame's stroke can hit
     };
 
@@ -259,13 +261,86 @@ window.initFluidBackdrop = function (canvas) {
         o = vec4(vel, 0.0, 1.0);
     }`;
 
-    /* The original refraction backdrop, unchanged — except that the fluid's
-       warp field is added to the domain, so the water reacts locally while
-       the look of the background stays exactly as it was. */
-    const DISPLAY = HEAD + `
-    uniform sampler2D u_warp;
+    /* ---- pigment space ----------------------------------------------------
+       The dye is NOT stored as RGB. Advection and reseeding blend texels
+       linearly, and linearly averaging two RGB colours desaturates toward
+       grey instead of producing a new colour. Instead each texel holds
+       (chroma.x, chroma.y, value), where chroma is the hue angle on the
+       colour wheel scaled by saturation. Averaging that vector walks the hue
+       around the wheel, so two pigments meeting yield the colour between
+       them — the way yellow and blue give green. */
+    const COLOR_LIB = `
+    const float TAU = 6.28318530718;
+
+    vec3 rgb2hsv(vec3 c) {
+        vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+        vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+        vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+        float d = q.x - min(q.w, q.y);
+        return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + 1e-10)), d / (q.x + 1e-10), q.x);
+    }
+    vec3 hsv2rgb(vec3 c) {
+        vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+        vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+        return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+    }
+    vec3 rgbToPigment(vec3 rgb) {
+        vec3 hsv = rgb2hsv(rgb);
+        float a = hsv.x * TAU;
+        return vec3(cos(a) * hsv.y, sin(a) * hsv.y, hsv.z);
+    }
+    vec3 pigmentToRgb(vec3 pig) {
+        float s = length(pig.xy);
+        float h = atan(pig.y, pig.x) / TAU;
+        // Mixing shortens the chroma vector; lift it a little so blends stay
+        // colourful rather than sliding toward grey.
+        return hsv2rgb(vec3(fract(h + 1.0), clamp(s * 1.18, 0.0, 1.0), pig.z));
+    }`;
+
+    /* The paint's original layout: purple left, teal right, magenta low. */
+    const BASE = HEAD + COLOR_LIB + `
+    void main() {
+        vec3 col = vec3(0.014, 0.018, 0.036);
+        col += smoothstep(0.62, 0.0, length((vUv - vec2(0.24, 0.30)) * vec2(1.5, 1.0))) * vec3(0.42, 0.06, 0.72);
+        col += smoothstep(0.58, 0.0, length((vUv - vec2(0.78, 0.36)) * vec2(1.5, 1.0))) * vec3(0.00, 0.46, 0.60);
+        col += smoothstep(0.66, 0.0, length((vUv - vec2(0.52, 0.80)) * vec2(1.5, 1.0))) * vec3(0.50, 0.04, 0.24);
+        o = vec4(rgbToPigment(col), 1.0);
+    }`;
+
+    /* ---- flowing surface coordinates --------------------------------------
+       The glass pattern is drawn from a coordinate field that is itself
+       carried by the current, exactly like the paint. Transporting the
+       coordinates makes the surface stretch and swirl with the water.
+       (Offsetting them by the velocity instead would raise a lens under the
+       cursor — that was the bulge.) */
+    const COORD_INIT = HEAD + `
+    void main() { o = vec4(vUv, 0.0, 1.0); }`;
+
+    /* Relax the surface back toward an undistorted grid. */
+    const COORD_RELAX = HEAD + `
+    uniform sampler2D u_coord;
+    uniform float u_amount;
+    void main() {
+        o = vec4(mix(texture(u_coord, vUv).xy, vUv, u_amount), 0.0, 1.0);
+    }`;
+
+    /* Ease the paint a hair back toward its original layout each frame. */
+    const RESEED = HEAD + `
+    uniform sampler2D u_dye, u_base;
+    uniform float u_amount;
+    void main() {
+        o = vec4(mix(texture(u_dye, vUv).rgb, texture(u_base, vUv).rgb, u_amount), 1.0);
+    }`;
+
+    /* The approved refraction backdrop — but the colour now comes from the
+       advected dye texture instead of a procedural function, so stirring
+       genuinely mixes the pigments rather than displacing a fixed pattern. */
+    const DISPLAY = HEAD + COLOR_LIB + `
+    uniform sampler2D u_dye, u_coord;
     uniform vec2  u_res;
-    uniform float u_time, u_energy, u_warpScale, u_warpColor;
+    uniform float u_time, u_energy;
+
+    vec3 paint(vec2 uv) { return pigmentToRgb(texture(u_dye, uv).xyz); }
 
     float hash(vec2 p) {
         p = fract(p * vec2(123.34, 456.21));
@@ -291,17 +366,6 @@ window.initFluidBackdrop = function (canvas) {
                       fbm(p + 2.4 * q + vec2(8.3, 2.8) - t * 0.07));
         return fbm(p + 2.6 * r);
     }
-    vec3 behind(vec2 uv, float t) {
-        vec3 col = vec3(0.014, 0.018, 0.036);
-        vec2 c1 = vec2(0.24 + sin(t * 0.42) * 0.10, 0.30 + cos(t * 0.35) * 0.09);
-        vec2 c2 = vec2(0.78 + cos(t * 0.31) * 0.09, 0.36 + sin(t * 0.44) * 0.10);
-        vec2 c3 = vec2(0.52 + sin(t * 0.27) * 0.12, 0.80 + cos(t * 0.38) * 0.08);
-        col += smoothstep(0.62, 0.0, length((uv - c1) * vec2(1.5, 1.0))) * vec3(0.42, 0.06, 0.72);
-        col += smoothstep(0.58, 0.0, length((uv - c2) * vec2(1.5, 1.0))) * vec3(0.00, 0.46, 0.60);
-        col += smoothstep(0.66, 0.0, length((uv - c3) * vec2(1.5, 1.0))) * vec3(0.50, 0.04, 0.24);
-        return col;
-    }
-
     void main() {
         /* vUv and the original gl_FragCoord-based uv are both bottom-up. */
         vec2 uv = vUv;
@@ -309,16 +373,11 @@ window.initFluidBackdrop = function (canvas) {
         vec2 p  = (vUv - 0.5) * (u_res / m);
         float t = u_time * 0.09;
 
-        /* A local, fluid-transported displacement. Clamped so that violently
-           shaking the pointer cannot blow the image apart. */
-        vec2 w = texture(u_warp, vUv).xy * u_warpScale;
-        w = clamp(w, vec2(-0.09), vec2(0.09));
-
-        /* The warp moves the glass AND the colour field underneath it, so the
-           background itself deforms rather than gaining an overlaid layer.
-           The colour needs the larger share to actually read as movement. */
-        vec2 sp  = p * 1.7 + w;
-        vec2 uvW = uv + w * u_warpColor;
+        /* Draw the surface from coordinates the current has carried, so the
+           water stretches and swirls where it was stirred. This is transport,
+           not a local offset, so no lens forms under the cursor. */
+        vec2 fuv = texture(u_coord, vUv).xy;
+        vec2 sp  = (fuv - 0.5) * (u_res / m) * 1.7;
 
         float e  = 2.0 / m;
         float h  = glassHeight(sp, t);
@@ -326,11 +385,13 @@ window.initFluidBackdrop = function (canvas) {
         float hy = glassHeight(sp + vec2(0.0, e), t);
         vec3  n  = normalize(vec3(-(hx - h) / e * 0.05, -(hy - h) / e * 0.05, 1.0));
 
+        /* Refract the paint, with per-channel dispersion. Each tap has to be
+           decoded out of pigment space before its channel is taken. */
         vec2 off = n.xy * (0.17 + u_energy * 0.06);
         vec3 col;
-        col.r = behind(uvW + off * 1.00, t).r;
-        col.g = behind(uvW + off * 1.11, t).g;
-        col.b = behind(uvW + off * 1.24, t).b;
+        col.r = paint(uv + off * 1.00).r;
+        col.g = paint(uv + off * 1.11).g;
+        col.b = paint(uv + off * 1.24).b;
 
         vec3 L = normalize(vec3(0.45, 0.80, 0.70));
         col += pow(max(dot(n, L), 0.0), 40.0) * 0.42;
@@ -353,14 +414,19 @@ window.initFluidBackdrop = function (canvas) {
         clear:      program(VERT, CLEAR),
         pressure:   program(VERT, PRESSURE),
         gradient:   program(VERT, GRADIENT),
+        base:       program(VERT, BASE),
+        reseed:     program(VERT, RESEED),
+        coordInit:  program(VERT, COORD_INIT),
+        coordRelax: program(VERT, COORD_RELAX),
         display:    program(VERT, DISPLAY)
     };
     for (const k in progs) if (!progs[k]) return null;
 
     const RG = [gl.RG16F, gl.RG, gl.HALF_FLOAT];
     const R  = [gl.R16F, gl.RED, gl.HALF_FLOAT];
+    const RGBA = [gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT];
 
-    let warp, velocity, divergenceFBO, curlFBO, pressure;
+    let dye, baseFBO, coord, velocity, divergenceFBO, curlFBO, pressure;
     let simW, simH, dyeW, dyeH;
 
     function use(prog, texelX, texelY) {
@@ -382,34 +448,46 @@ window.initFluidBackdrop = function (canvas) {
         dyeH = px(CONF.DYE_RES * (ar > 1 ? 1 : 1 / ar));
 
         const lin = gl.LINEAR;
-        // The warp field starts at zero, so the backdrop opens exactly as before.
-        warp     = makeDoubleFBO(dyeW, dyeH, ...RG, lin);
+        dye      = makeDoubleFBO(dyeW, dyeH, ...RGBA, lin);
+        baseFBO  = makeFBO(dyeW, dyeH, ...RGBA, lin);
         velocity = makeDoubleFBO(simW, simH, ...RG, lin);
         pressure = makeDoubleFBO(simW, simH, ...R, gl.NEAREST);
         divergenceFBO = makeFBO(simW, simH, ...R, gl.NEAREST);
         curlFBO       = makeFBO(simW, simH, ...R, gl.NEAREST);
+
+        coord = makeDoubleFBO(dyeW, dyeH, ...RG, lin);
+
+        // Paint the original layout, and start the dye as a copy of it.
+        use(progs.base, 1 / dyeW, 1 / dyeH);
+        blit(baseFBO);
+        use(progs.base, 1 / dyeW, 1 / dyeH);
+        blit(dye.write);
+        dye.swap();
+
+        // The surface starts as an undistorted grid.
+        use(progs.coordInit, 1 / dyeW, 1 / dyeH);
+        blit(coord.write);
+        coord.swap();
     }
 
     function disposeTargets() {
-        [warp, velocity, pressure].forEach(d => {
+        [dye, coord, velocity, pressure].forEach(d => {
             if (!d) return;
             [d.read, d.write].forEach(f => { gl.deleteTexture(f.tex); gl.deleteFramebuffer(f.fbo); });
         });
-        [divergenceFBO, curlFBO].forEach(f => {
+        [divergenceFBO, curlFBO, baseFBO].forEach(f => {
             if (!f) return;
             gl.deleteTexture(f.tex);
             gl.deleteFramebuffer(f.fbo);
         });
     }
 
-    /* Inject along prev -> point, into velocity and (optionally) the warp
-       field that the display shader reads. */
-    function splat(x, y, px, py, dx, dy, radius, segment, warpAmount) {
-        const aspect = canvas.width / canvas.height;
-
-        let u = use(progs.splat, velocity.texelX, velocity.texelY);
+    /* Push the water along prev -> point. No pigment is added: the pointer
+       only stirs the paint that is already there. */
+    function splat(x, y, px, py, dx, dy, radius, segment) {
+        const u = use(progs.splat, velocity.texelX, velocity.texelY);
         gl.uniform1i(u.u_target, velocity.read.attach(0));
-        gl.uniform1f(u.u_aspect, aspect);
+        gl.uniform1f(u.u_aspect, canvas.width / canvas.height);
         gl.uniform2f(u.u_point, x, y);
         gl.uniform2f(u.u_prev, px, py);
         gl.uniform1f(u.u_segment, segment);
@@ -417,18 +495,6 @@ window.initFluidBackdrop = function (canvas) {
         gl.uniform3f(u.u_color, dx, dy, 0.0);
         blit(velocity.write);
         velocity.swap();
-
-        if (!warpAmount) return;
-        u = use(progs.splat, warp.texelX, warp.texelY);
-        gl.uniform1i(u.u_target, warp.read.attach(0));
-        gl.uniform1f(u.u_aspect, aspect);
-        gl.uniform2f(u.u_point, x, y);
-        gl.uniform2f(u.u_prev, px, py);
-        gl.uniform1f(u.u_segment, segment);
-        gl.uniform1f(u.u_radius, radius);
-        gl.uniform3f(u.u_color, dx * warpAmount, dy * warpAmount, 0.0);
-        blit(warp.write);
-        warp.swap();
     }
 
     function step(dt) {
@@ -480,26 +546,49 @@ window.initFluidBackdrop = function (canvas) {
         blit(velocity.write);
         velocity.swap();
 
-        // Transport the warp field along the flow — this is what stretches a
-        // stroke into filaments instead of a single blob.
-        u = use(progs.advect, warp.texelX, warp.texelY);
+        // Carry the paint along the flow. This is the mixing: pigment that
+        // lands on another colour stays there.
+        u = use(progs.advect, dye.texelX, dye.texelY);
         gl.uniform2f(u.u_texelSource, velocity.texelX, velocity.texelY);
         gl.uniform1f(u.u_dt, dt);
         gl.uniform1i(u.u_velocity, velocity.read.attach(0));
-        gl.uniform1i(u.u_source, warp.read.attach(1));
-        gl.uniform1f(u.u_dissipation, CONF.WARP_DISSIPATION);
-        blit(warp.write);
-        warp.swap();
+        gl.uniform1i(u.u_source, dye.read.attach(1));
+        gl.uniform1f(u.u_dissipation, CONF.DYE_DISSIPATION);
+        blit(dye.write);
+        dye.swap();
+
+        u = use(progs.reseed, dye.texelX, dye.texelY);
+        gl.uniform1i(u.u_dye, dye.read.attach(0));
+        gl.uniform1i(u.u_base, baseFBO.attach(1));
+        gl.uniform1f(u.u_amount, CONF.RESEED);
+        blit(dye.write);
+        dye.swap();
+
+        // Carry the surface coordinates along the same current, so the water
+        // itself stretches and swirls rather than only the pigment.
+        u = use(progs.advect, coord.texelX, coord.texelY);
+        gl.uniform2f(u.u_texelSource, velocity.texelX, velocity.texelY);
+        gl.uniform1f(u.u_dt, dt);
+        gl.uniform1i(u.u_velocity, velocity.read.attach(0));
+        gl.uniform1i(u.u_source, coord.read.attach(1));
+        gl.uniform1f(u.u_dissipation, 0.0);
+        blit(coord.write);
+        coord.swap();
+
+        u = use(progs.coordRelax, coord.texelX, coord.texelY);
+        gl.uniform1i(u.u_coord, coord.read.attach(0));
+        gl.uniform1f(u.u_amount, CONF.COORD_RELAX);
+        blit(coord.write);
+        coord.swap();
     }
 
     function render(time, energy) {
-        const u = use(progs.display, warp.texelX, warp.texelY);
-        gl.uniform1i(u.u_warp, warp.read.attach(0));
+        const u = use(progs.display, dye.texelX, dye.texelY);
+        gl.uniform1i(u.u_dye, dye.read.attach(0));
+        gl.uniform1i(u.u_coord, coord.read.attach(1));
         gl.uniform2f(u.u_res, canvas.width, canvas.height);
         gl.uniform1f(u.u_time, time);
         gl.uniform1f(u.u_energy, energy);
-        gl.uniform1f(u.u_warpScale, CONF.WARP_SCALE);
-        gl.uniform1f(u.u_warpColor, CONF.WARP_COLOR);
         blit(null);
     }
 
@@ -541,7 +630,7 @@ window.initFluidBackdrop = function (canvas) {
             ptr.moved = false;
             splat(ptr.x, ptr.y, ptr.px, ptr.py,
                   ptr.dx * CONF.SPLAT_FORCE, ptr.dy * CONF.SPLAT_FORCE,
-                  CONF.SPLAT_RADIUS, 1.0, CONF.WARP_INJECT);
+                  CONF.SPLAT_RADIUS, 1.0);
             ptr.px = ptr.x;
             ptr.py = ptr.y;
         }

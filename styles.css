@@ -288,7 +288,7 @@ body:not([data-view="index"]) .close-btn {
     inset: 0;
     /* leave the index column clear on the left */
     padding-left: clamp(90px, 14vw, 300px);
-    padding-top: 0.2em;
+    padding-top: 2.6em;
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
@@ -402,8 +402,9 @@ body:not([data-view="index"]) .close-btn {
    About
    ============================================================ */
 
+/* Wide enough to hold the intro on two lines. */
 .lede {
-    max-width: min(100%, 58ch);
+    max-width: min(100%, 96ch);
     font-size: clamp(0.8rem, 1.44vw, 1.08rem);
     line-height: 1.6;
     margin-bottom: 3em;
@@ -544,12 +545,10 @@ body:not([data-view="index"]) .close-btn {
     letter-spacing: -0.02em;
     line-height: 1.2;
     word-break: break-word;
-    border-bottom: 1px solid var(--rule);
-    padding-bottom: 0.12em;
     width: fit-content;
-    transition: border-color 0.35s ease, opacity 0.35s ease;
+    transition: opacity 0.35s ease;
 }
-.email:hover { border-color: var(--ink); }
+.email:hover { opacity: 0.65; }
 
 /* ============================================================
    Persistent chrome

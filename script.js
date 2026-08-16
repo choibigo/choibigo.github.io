@@ -378,7 +378,7 @@ const pageEls = {};
 PAGES.forEach(p => { pageEls[p] = document.getElementById(`page-${p}`); });
 const navLinks = document.querySelectorAll('.index-list a');
 
-function showPage(name, push = true) {
+function showPage(name) {
     const target = PAGES.includes(name) ? name : 'index';
 
     Object.entries(pageEls).forEach(([key, el]) => {
@@ -398,10 +398,7 @@ function showPage(name, push = true) {
         if (sc) sc.scrollTop = 0;
     }
 
-    if (push) {
-        const hash = target === 'index' ? location.pathname : `#${target}`;
-        history.pushState({ page: target }, '', hash);
-    }
+    // The address bar is deliberately left alone — panels are not routes.
 
     // rAF, so this is safe on the first call (before updateRail's consts exist).
     requestAnimationFrame(() => requestAnimationFrame(updateRail));
@@ -422,12 +419,8 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') showPage('index');
 });
 
-window.addEventListener('popstate', () => {
-    showPage(location.hash.replace('#', '') || 'index', false);
-});
-
-// Honour a deep link on first load.
-showPage(location.hash.replace('#', '') || 'index', false);
+// Always open on the index; there are no panel URLs to restore.
+showPage('index');
 
 /* ------------------------------------------------------------
    3b. Scroll indicator for the open page
