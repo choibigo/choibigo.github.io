@@ -410,8 +410,17 @@ document.querySelectorAll('[data-nav]').forEach(a => {
     a.addEventListener('click', (e) => {
         e.preventDefault();
         const want = a.dataset.nav;
+        const here = document.body.dataset.view;
+
+        // On the home screen the logo has nothing to navigate to, so it
+        // drips ink into the water instead.
+        if (want === 'index' && here === 'index') {
+            if (fluid) fluid.ink();
+            return;
+        }
+
         // Clicking the menu you are already on closes the panel.
-        showPage(document.body.dataset.view === want ? 'index' : want);
+        showPage(here === want ? 'index' : want);
     });
 });
 

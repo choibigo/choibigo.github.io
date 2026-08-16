@@ -37,12 +37,13 @@ window.initFluidBackdrop = function (canvas, onReady) {
         SPLAT_FORCE: 600,
         /* Slow enough that a stroke stays readable before the paint drifts
            back to its original layout. */
-        RESEED: 0.005,
+        RESEED: 0.003,
         COORD_RELAX: 0.004,       // how fast the water surface un-distorts
         MAX_STROKE: 0.030,        // caps how hard one frame's stroke can hit
         INTRO_SECONDS: 1.0,       // droplets of paint land until the canvas fills
         DROP_COLS: 4,             // one drop per cell, in shuffled order — 8 drops
-        DROP_ROWS: 2
+        DROP_ROWS: 2,
+        INK_RADIUS: 0.085         // logo-click drop; randomised 0.5x .. 1.5x
     };
 
     /* ---------- program helper ---------- */
@@ -180,6 +181,21 @@ window.initFluidBackdrop = function (canvas, onReady) {
         o = vec4(texture(u_target, vUv).xyz + s * u_color, 1.0);
     }`;
 
+    /* A single point vortex: rotational velocity around a centre, falling off
+       as a Gaussian. Superposing several of these with random signs is what
+       lets an arbitrary swirl emerge, instead of picking from a few presets. */
+    const VORTEX = HEAD + `
+    uniform sampler2D u_target;
+    uniform vec2  u_center;
+    uniform float u_strength, u_radius, u_aspect;
+    void main() {
+        vec2 p = vUv;       p.x *= u_aspect;
+        vec2 c = u_center;  c.x *= u_aspect;
+        vec2 d = p - c;
+        vec2 rot = vec2(-d.y, d.x) * (u_strength * exp(-dot(d, d) / max(u_radius, 1e-6)));
+        o = vec4(texture(u_target, vUv).xy + rot, 0.0, 1.0);
+    }`;
+
     /* Semi-Lagrangian transport: walk backwards along the velocity field. */
     const ADVECT = HEAD + `
     uniform sampler2D u_velocity, u_source;
@@ -312,29 +328,45 @@ window.initFluidBackdrop = function (canvas, onReady) {
 
     /* Loading: the canvas starts empty and droplets of paint land on it,
        each one soft-edged so it reads as ink soaking in rather than a stamp. */
-    const DROP = HEAD + `
-    uniform sampler2D u_dye, u_base;
+    /* A blot outline. The radius is perturbed by angle; the amplitudes and
+       frequencies come in per drop, so drops differ in *shape* and not only
+       in rotation. Frequencies must stay whole numbers or the outline does
+       not close on itself. */
+    const BLOB_LIB = `
     uniform vec2  u_point;
+    uniform vec3  u_wobAmp, u_wobFreq;
     uniform float u_radius, u_aspect, u_strength, u_seed, u_soft;
-    void main() {
-        vec2 p = vUv;      p.x *= u_aspect;
+
+    float blobMask(vec2 uv) {
+        vec2 p = uv;       p.x *= u_aspect;
         vec2 c = u_point;  c.x *= u_aspect;
 
-        vec2  d    = p - c;
-        float ang  = atan(d.y, d.x);
-        float dist = length(d);
+        vec2  d   = p - c;
+        float ang = atan(d.y, d.x);
+        float wob = sin(ang * u_wobFreq.x + u_seed)         * u_wobAmp.x
+                  + sin(ang * u_wobFreq.y - u_seed * 1.7)   * u_wobAmp.y
+                  + sin(ang * u_wobFreq.z + u_seed * 2.6)   * u_wobAmp.z;
 
-        /* A perfect circle reads as a stamp. Perturbing the radius by angle
-           — a different phase per drop — gives each one its own uneven,
-           ink-blot outline instead. */
-        float wob = sin(ang * 2.0 + u_seed) * 0.15
-                  + sin(ang * 3.0 - u_seed * 1.7) * 0.10
-                  + sin(ang * 5.0 + u_seed * 2.6) * 0.06
-                  + sin(ang * 8.0 - u_seed * 3.3) * 0.035;
         float r = u_radius * (1.0 + wob);
+        return smoothstep(r, r * u_soft, length(d)) * u_strength;
+    }`;
 
-        float m = smoothstep(r, r * u_soft, dist) * u_strength;
+    const DROP = HEAD + BLOB_LIB + `
+    uniform sampler2D u_dye, u_base;
+    void main() {
+        float m = blobMask(vUv);
         o = vec4(mix(texture(u_dye, vUv).xyz, texture(u_base, vUv).xyz, m), 1.0);
+    }`;
+
+    /* A single drop of an arbitrary colour. Same uneven outline as the intro
+       drops, but it stains toward a given ink rather than the palette — the
+       reseed pass then dissolves it back over the next few seconds. */
+    const INK = HEAD + COLOR_LIB + BLOB_LIB + `
+    uniform sampler2D u_dye;
+    uniform vec3 u_ink;
+    void main() {
+        float m = blobMask(vUv);
+        o = vec4(mix(texture(u_dye, vUv).xyz, rgbToPigment(u_ink), m), 1.0);
     }`;
 
     /* ---- flowing surface coordinates --------------------------------------
@@ -447,6 +479,8 @@ window.initFluidBackdrop = function (canvas, onReady) {
         base:       program(VERT, BASE),
         reseed:     program(VERT, RESEED),
         drop:       program(VERT, DROP),
+        ink:        program(VERT, INK),
+        vortex:     program(VERT, VORTEX),
         coordInit:  program(VERT, COORD_INIT),
         coordRelax: program(VERT, COORD_RELAX),
         display:    program(VERT, DISPLAY)
@@ -528,6 +562,93 @@ window.initFluidBackdrop = function (canvas, onReady) {
             gl.deleteTexture(f.tex);
             gl.deleteFramebuffer(f.fbo);
         });
+    }
+
+    const pick = a => a[Math.floor(Math.random() * a.length)];
+
+    /* One drop's outline: phase, edge softness, and the wobble that gives it
+       its shape. Whole-number frequencies keep the outline closed. */
+    function randomBlob() {
+        return {
+            seed: Math.random() * 20,
+            soft: 0.20 + Math.random() * 0.34,
+            freq: [pick([2, 3]), pick([3, 4, 5]), pick([5, 6, 7, 8])],
+            amp: [0.05 + Math.random() * 0.15,
+                  0.03 + Math.random() * 0.09,
+                  0.02 + Math.random() * 0.06]
+        };
+    }
+
+    function setBlob(u, b, x, y, r, strength) {
+        gl.uniform2f(u.u_point, x, y);
+        gl.uniform1f(u.u_radius, r);
+        gl.uniform1f(u.u_aspect, canvas.width / canvas.height);
+        gl.uniform1f(u.u_strength, strength);
+        gl.uniform1f(u.u_seed, b.seed);
+        gl.uniform1f(u.u_soft, b.soft);
+        gl.uniform3f(u.u_wobFreq, b.freq[0], b.freq[1], b.freq[2]);
+        gl.uniform3f(u.u_wobAmp, b.amp[0], b.amp[1], b.amp[2]);
+    }
+
+    /* The disturbance a landing drop leaves.
+
+       A straight jet always rolls up into a counter-rotating PAIR, so
+       randomising only its direction and strength still yields the same
+       two-sided shape every time. Real variety needs different force
+       *arrangements*, so pick between four: a jet, a one-way vortex, a
+       radial burst, and a shear band. */
+    const TAU = Math.PI * 2;
+
+    function vortex(cx, cy, radius, strength) {
+        const u = use(progs.vortex, velocity.texelX, velocity.texelY);
+        gl.uniform1i(u.u_target, velocity.read.attach(0));
+        gl.uniform2f(u.u_center, cx, cy);
+        gl.uniform1f(u.u_radius, radius);
+        gl.uniform1f(u.u_strength, strength);
+        gl.uniform1f(u.u_aspect, canvas.width / canvas.height);
+        blit(velocity.write);
+        velocity.swap();
+    }
+
+    /* Scatter point vortices with random count, placement, size, strength and
+       spin, then let the solver resolve the superposition. The shape is not
+       chosen — it emerges — so this samples a continuous space of swirls
+       rather than a handful of presets: sometimes one clean spiral, sometimes
+       a counter-rotating pair, a chain, or something with no name. */
+    function swirl(x, y, spread) {
+        const ar = canvas.width / canvas.height;
+
+        // Anywhere from a single eye to a crowded cluster.
+        const n = 1 + Math.floor(Math.random() * 9);
+
+        // Each drop gets its own spin bias: near 0 or 1 the vortices nearly all
+        // turn the same way and merge into one big swirl; near 0.5 they fight
+        // and break into pairs and chains.
+        const bias = Math.random();
+
+        // How far the cluster spreads varies per drop as well.
+        const reach = spread * (0.6 + Math.random() * 2.4);
+
+        for (let i = 0; i < n; i++) {
+            const th = Math.random() * TAU;
+            const off = Math.random() * reach;
+            const cx = x + Math.cos(th) * off / ar;
+            const cy = y + Math.sin(th) * off;
+
+            // random() squared skews small, so most are tight with the
+            // occasional wide one — more varied than a flat range.
+            const rad = 0.0005 + Math.random() * Math.random() * 0.0130;
+            const str = 180 + Math.random() * Math.random() * 3200;
+            vortex(cx, cy, rad, str * (Math.random() < bias ? 1 : -1));
+        }
+
+        // Often a drift too, so the whole thing travels while it turns.
+        if (Math.random() < 0.55) {
+            const a = Math.random() * TAU;
+            const f = 30 + Math.random() * 150;
+            splat(x, y, x, y, Math.cos(a) * f, Math.sin(a) * f,
+                  0.0015 + Math.random() * 0.0055, 0.0);
+        }
     }
 
     /* Push the water along prev -> point. No pigment is added: the pointer
@@ -648,6 +769,30 @@ window.initFluidBackdrop = function (canvas, onReady) {
     const ptr = { x: 0.5, y: 0.5, px: 0.5, py: 0.5, dx: 0, dy: 0, moved: false };
     let accepting = true;
 
+    /* Queued ink drops, so they land one after another instead of at once. */
+    const inkQueue = [];
+
+    function hsvToRgb(h, s, v) {
+        const i = Math.floor(h * 6);
+        const f = h * 6 - i;
+        const p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s);
+        return [[v, t, p], [q, v, p], [p, v, t], [p, q, v], [t, p, v], [v, p, q]][i % 6];
+    }
+
+    function pourInk(now) {
+        while (inkQueue.length && inkQueue[0].at <= now) {
+            const k = inkQueue.shift();
+            const u = use(progs.ink, dye.texelX, dye.texelY);
+            gl.uniform1i(u.u_dye, dye.read.attach(0));
+            gl.uniform3f(u.u_ink, k.c[0], k.c[1], k.c[2]);
+            setBlob(u, k.blob, k.x, k.y, k.r, 0.95);
+            blit(dye.write);
+            dye.swap();
+
+            swirl(k.x, k.y, k.r * 0.4);
+        }
+    }
+
     function resizeCanvas() {
         const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
         const w = Math.max(1, Math.floor(window.innerWidth * dpr));
@@ -714,23 +859,17 @@ window.initFluidBackdrop = function (canvas, onReady) {
                 // size or the gaps between cells never close.
                 const r = (0.51 + 0.18 * k) * (0.9 + 0.2 * Math.random());
 
-                let d = use(progs.drop, dye.texelX, dye.texelY);
+                const d = use(progs.drop, dye.texelX, dye.texelY);
                 gl.uniform1i(d.u_dye, dye.read.attach(0));
                 gl.uniform1i(d.u_base, baseFBO.attach(1));
-                gl.uniform2f(d.u_point, x, y);
-                gl.uniform1f(d.u_radius, r);
-                gl.uniform1f(d.u_aspect, aspect);
-                gl.uniform1f(d.u_strength, 0.9);
-                gl.uniform1f(d.u_seed, Math.random() * 20.0);
-                // Vary how sharply each drop fades, so they don't share an edge.
-                gl.uniform1f(d.u_soft, 0.20 + Math.random() * 0.35);
+                setBlob(d, randomBlob(), x, y, r, 0.9);
                 blit(dye.write);
                 dye.swap();
 
-                // A soft nudge where it lands — a hard jet here smeared the
-                // drop into a streak before it read as a drop at all.
-                const a = Math.random() * Math.PI * 2;
-                splat(x, y, x, y, Math.cos(a) * 110, Math.sin(a) * 110, 0.004, 0.0);
+                // Intro drops are far bigger than the ink drops, so scale the
+                // spread down — at r * 0.5 the vortex ring spans the screen
+                // instead of curling inside the drop.
+                swirl(x, y, r * 0.10);
                 dropped++;
             }
 
@@ -740,6 +879,7 @@ window.initFluidBackdrop = function (canvas, onReady) {
             }
         }
 
+        pourInk(now);
         render(t, window.__bgEnergy || 0);
         requestAnimationFrame(frame);
     })(last);
@@ -772,6 +912,21 @@ window.initFluidBackdrop = function (canvas, onReady) {
         setAccepting(v) {
             if (!v) ptr.moved = false;
             accepting = v;
+        },
+
+        /* One small, randomly coloured drop at a random spot. It mixes into
+           the water and the reseed pass dissolves it within a few seconds. */
+        ink() {
+            if (!introDone) return;
+            inkQueue.push({
+                at: performance.now(),
+                x: 0.10 + Math.random() * 0.80,
+                y: 0.14 + Math.random() * 0.72,
+                // 0.5x to 1.5x of the base size.
+                r: CONF.INK_RADIUS * (0.5 + Math.random()),
+                c: hsvToRgb(Math.random(), 0.85, 0.90),
+                blob: randomBlob()
+            });
         }
     };
 };
