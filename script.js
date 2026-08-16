@@ -436,20 +436,67 @@ document.addEventListener('keydown', (e) => {
    sits under the pointer (the area beside the Contact photo, for one). So
    instead ask whether the point actually landed on something that draws:
    an element rendering its own text, or an image. Everything else is layout. */
-function pointHitsContent(panel, x, y) {
-    const walker = document.createTreeWalker(panel, NodeFilter.SHOW_ELEMENT);
-    for (let el = walker.nextNode(); el; el = walker.nextNode()) {
-        const tag = el.tagName.toLowerCase();
-        const draws = tag === 'img' || tag === 'svg' ||
-            [...el.childNodes].some(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim());
-        if (!draws) continue;
+/* The panel's content blocks: the things that carry the rules you can see.
+   Measuring the inner text spans instead would make the region as narrow as
+   whatever words happen to be on that line, when what reads as "the content"
+   is the block the underline spans. */
+function contentBlocks(panel) {
+    const scroller = panel.querySelector('.page-scroll') || panel;
+    const rects = [];
 
-        const r = el.getBoundingClientRect();
-        if (r.width && r.height && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
-            return true;
+    for (const block of scroller.children) {
+        /* Descend only into real layout containers, whose children are the
+           rows. Descending into any element with children also walked into a
+           paragraph's inline markup — a <br> measures zero and the paragraph
+           then contributed nothing at all. */
+        const display = getComputedStyle(block).display;
+        const isContainer = display.includes('flex') || display.includes('grid');
+        const parts = isContainer && block.children.length ? [...block.children] : [block];
+
+        for (const el of parts) {
+            const r = el.getBoundingClientRect();
+            if (r.width && r.height) rects.push(r);
         }
     }
-    return false;
+    return rects;
+}
+
+function pointHitsContent(panel, x, y) {
+    const rects = contentBlocks(panel);
+    if (!rects.length) return false;
+
+    // Past the first or last block vertically is outside, full stop.
+    if (y < Math.min(...rects.map(r => r.top))) return false;
+    if (y > Math.max(...rects.map(r => r.bottom))) return false;
+
+    /* Width is judged per row: whatever block sits at this height decides how
+       far right the content reaches. In a gap between two blocks, both count,
+       so the space above a rule still belongs to the content around it. */
+    let left = Infinity;
+    let right = -Infinity;
+    let above = null;
+    let below = null;
+
+    for (const r of rects) {
+        if (y >= r.top && y <= r.bottom) {
+            left = Math.min(left, r.left);
+            right = Math.max(right, r.right);
+        } else if (r.bottom < y && (!above || r.bottom > above.bottom)) {
+            above = r;
+        } else if (r.top > y && (!below || r.top < below.top)) {
+            below = r;
+        }
+    }
+
+    if (right < left) {
+        for (const r of [above, below]) {
+            if (!r) continue;
+            left = Math.min(left, r.left);
+            right = Math.max(right, r.right);
+        }
+    }
+
+    return x >= left && x <= right;
 }
 
 document.addEventListener('click', (e) => {
