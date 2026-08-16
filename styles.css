@@ -433,7 +433,7 @@ body:not([data-view="index"]) .close-btn {
 .socials a:hover { opacity: 1; transform: translateY(-3px); }
 
 /* ============================================================
-   Research
+   Interests
    ============================================================ */
 
 .areas {
@@ -457,7 +457,7 @@ body:not([data-view="index"]) .close-btn {
 .area-desc { grid-column: 2; grid-row: 2; }
 .area:last-child { border-bottom: 1px solid var(--rule); }
 
-/* Research entries are read, not clicked — so they do not react to hover. */
+/* Interests entries are read, not clicked — so they do not react to hover. */
 
 .area-num { opacity: 0.4; font-size: 0.85em; }
 

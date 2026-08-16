@@ -375,7 +375,7 @@ document.addEventListener('mouseout', (e) => {
    3. Router — the index swaps content in place, never scrolls
    ------------------------------------------------------------ */
 
-const PAGES = ['works', 'about', 'research', 'contact'];
+const PAGES = ['works', 'about', 'interests', 'contact'];
 const pageEls = {};
 PAGES.forEach(p => { pageEls[p] = document.getElementById(`page-${p}`); });
 const navLinks = document.querySelectorAll('.index-list a');
