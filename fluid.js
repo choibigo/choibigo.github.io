@@ -397,17 +397,17 @@ window.initFluidBackdrop = function (canvas, onReady) {
         vec3 cur  = texture(u_dye, vUv).xyz;
         vec3 base = texture(u_base, vUv).xyz;
 
-        /* Fill only what is still empty, so each drop shows progress instead
-           of repainting ground that is already done. The test is against this
-           pixel's own finished value — an absolute threshold stops the dim
-           corners and the bright centres at completely different points.
+        /* Paint straight to the finished value.
 
-           Painted ground keeps a small share so edges still knit together,
-           but nowhere near enough to re-brighten it. */
-        float ratio = cur.z / max(base.z, 1e-4);
-        float empty = mix(0.07, 1.0, 1.0 - smoothstep(0.04, 0.62, ratio));
+           This used to be gated by how full the pixel already was, which
+           capped the intro around 60% of the palette's brightness. The reseed
+           pass then took over once loading ended and lifted the whole canvas
+           to 100% — the screen visibly brightening a moment after load.
 
-        o = vec4(mix(cur, base, blobMask(vUv) * empty), 1.0);
+           No gate is needed: mixing toward a fixed target is idempotent, so
+           re-covering finished ground changes nothing, and intro drops do not
+           stir, so there is no mixed colour for a repaint to undo. */
+        o = vec4(mix(cur, base, blobMask(vUv)), 1.0);
     }`;
 
     /* A single drop of an arbitrary colour. Same uneven outline as the intro
@@ -1067,9 +1067,22 @@ window.initFluidBackdrop = function (canvas, onReady) {
     return {
         /* clientX/clientY in CSS pixels */
         setPointer(cx, cy) {
-            if (!accepting) return;
             const x = cx / window.innerWidth;
             const y = 1 - cy / window.innerHeight;   // GL space is bottom-up
+
+            /* While a panel is open, follow the cursor but do not stir — and
+               crucially drag the stroke origin along with it. Returning early
+               here left that origin frozen where the pointer last stirred, so
+               the first splat after the panel closed spanned the whole gap in
+               one segment: the water suddenly traced the entire path the mouse
+               had taken across the panel. */
+            if (!accepting) {
+                ptr.x = ptr.px = x;
+                ptr.y = ptr.py = y;
+                ptr.dx = ptr.dy = 0;
+                ptr.moved = false;
+                return;
+            }
 
             // Cap a single frame's stroke, so shaking the pointer hard does
             // not fire off a shockwave.
