@@ -1,0 +1,20 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "site",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "4173"],
+      "port": 4173
+    },
+    {
+      "name": "site-range",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "C:\\Users\\CBigO\\AppData\\Local\\Temp\\claude\\D--workspace-difficult-git-choibigo-github-io\\f482ad91-3f47-40ca-b0fe-371d4e08d85a\\scratchpad\\rangeserver.py",
+        "4174"
+      ],
+      "port": 4174
+    }
+  ]
+}
